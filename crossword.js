@@ -503,6 +503,11 @@ class CrosswordGame {
             e.preventDefault();
         });
 
+        document.getElementById('revealCells').addEventListener('click', (e) => {
+            this.revealRandomCells(5);
+            e.preventDefault();
+        });
+
         //this.clueElements.text.addEventListener('click', (e) => {
         //    this.useAIClue = !this.useAIClue;
         //    if (this.currentCell) {
@@ -568,7 +573,9 @@ class CrosswordGame {
     }
 
     handleCellDblClick(input) {
-        this.revealCell();
+        const row = parseInt(this.currentCell.dataset.row);
+        const col = parseInt(this.currentCell.dataset.col);
+        this.revealCell(row, col);
     }
 
     handleCellInput(input, event) {
@@ -781,24 +788,44 @@ class CrosswordGame {
         }
     }
 
-    revealCell() {
-        if (this.currentCell) {
-            const row = parseInt(this.currentCell.dataset.row);
-            const col = parseInt(this.currentCell.dataset.col);
-            const input = this.getCellInput(row, col);
-            if (input) {
-                const char = this.puzzleData.solution[row][col];
+    revealCell(row, col) {
+        const input = this.getCellInput(row, col);
+        if (input) {
+            const char = this.puzzleData.solution[row][col];
 
-                // Don't reveal if we already have the solution
-                if (input.dataset.value !== char)
-                {
-                    input.dataset.value = char;
-                    input.dataset.revealed = "true";
-                    input.innerText = char;
-                    this.userState[row][col] = char;
-                    input.classList.add('revealed-cell');
+            // Don't reveal if we already have the solution
+            if (input.dataset.value !== char)
+            {
+                input.dataset.value = char;
+                input.dataset.revealed = "true";
+                input.innerText = char;
+                this.userState[row][col] = char;
+                input.classList.add('revealed-cell');
+            }
+
+            this.saveGameState();
+        }
+    }
+
+    revealRandomCells(n) {
+        let missingCells = [];
+        for (let row = 0; row < this.puzzleData.height; ++row) {
+            for (let col = 0; col < this.puzzleData.width; ++col) {
+                let userInput = this.userState[row][col],
+                    correct = this.puzzleData.solution[row][col];
+
+                if (userInput !== correct) {
+                    missingCells.push({ col, row });
                 }
             }
+        }
+
+        for (let i = 0; i < n && missingCells.length > 0; ++i) {
+            let randIdx = Math.floor(missingCells.length * Math.random()),
+                cell = missingCells[randIdx];
+            missingCells.splice(randIdx, 1);
+
+            this.revealCell(cell.row, cell.col);
         }
     }
 

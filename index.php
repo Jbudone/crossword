@@ -5,14 +5,12 @@
   - button to reveal random cells
   - fit board height to mobile screen, including (smaller) clue display -- ie. larger boards overflow
   - clue text could be too large, need to scroll down to see the rest? maybe remove fixed position and instead have it directly under the board
-  - localStorage resume from last played crossword puzzle
   - animation when ending?
   - calendar page to show which days you completed or are partial completed  (can extend this into daily trivia/etc.)
   - save state to server? (in case we whipe localstorage or load from another browser)
 
 
   - php config to disable cache or turn back on (for when we're in development or not)
-  - store configs somewhere, then create git repo without config
   - nyt login key: need to automate getting this somehow; or login from cli call
   - dreamhost security errors + .git folder
 
@@ -35,7 +33,7 @@ include('controller.php');
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 
     <title>Crossword</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?nocache=<?php echo time(); ?>">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -69,6 +67,7 @@ echo getPuzzle($puzzleid);
         <div class="buttons">
             <button id="prevPuzzle" class="button">Previous Puzzle</button>
             <button id="aiToggle" class="button">AI Toggle</button>
+            <button id="revealCells" class="button">Random Reveal</button>
             <button id="nextPuzzle" class="button">Next Puzzle</button>
         </div>
 
@@ -96,7 +95,7 @@ echo getPuzzle($puzzleid);
         </div>
     </div>
     <script src="crossword.js?nocache=<?php echo time(); ?>"></script>
-    <script src="main.js"></script>
+    <script src="main.js?nocache=<?php echo time(); ?>"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
