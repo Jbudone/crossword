@@ -11,13 +11,9 @@ const fs = require('fs');
 const zlib = require('zlib');
 const ai = require('./ai');
 const puzParser = require('./puzzleParser_NYT');
+const child_process = require('child_process');
 
-let f = fs.readFileSync('secret.json', 'utf8');
-let secretJson = JSON.parse(f);
-if (!secretJson['nyt-cookie']) {
-    throw new Error("No openai apikey");
-}
-
+let nytCookie = child_process.execSync('secrets.sh nyt-cookie', { encoding: 'utf8' }).trim();
 
 function getPuzzlesFile() {
     if (!fs.existsSync('puzzles.json')) {
@@ -71,7 +67,7 @@ const processNewPuzzles = (newPuzzles) => {
                 method: 'GET',
                 gzip: true,
                 headers: {
-                    'Cookie': secretJson['nyt-cookie'],
+                    'Cookie': nytCookie,
                     'Accept': '*/*', // Accept any content type
                     'Accept-Encoding': 'gzip, deflate, br', // Handle compressed responses
                     'User-Agent': 'curl/7.64.1', // Mimic a curl User-Agent

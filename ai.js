@@ -1,18 +1,14 @@
-//import OpenAI from "openai";
 var OpenAI = require('openai');
 const fs = require('fs');
+const child_process = require('child_process');
 
-let f = fs.readFileSync('secret.json', 'utf8');
-let secretJson = JSON.parse(f);
-if (!secretJson['openai-apikey']) {
-    throw new Error("No openai apikey");
-}
+let openaiApiKey = child_process.execSync('~/jdrive/jstuff/work/personal/utilities/secrets.sh openai-apikey', { encoding: 'utf8' }).trim();
 
 async function main(userContent) {
 
 
 
-    const openai = new OpenAI({ apiKey: secretJson['openai-apikey'] });
+    const openai = new OpenAI({ apiKey: openaiApiKey });
 
   const completion = await openai.chat.completions.create({
       //messages: [{ role: "system", content: "You are a crossword puzzle creator. Given a json of clues and solution pairs, adjust the json with a word count for the solutions." }],
