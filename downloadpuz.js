@@ -12,13 +12,13 @@ const zlib = require('zlib');
 const ai = require('./ai');
 const puzParser = require('./puzzleParser_NYT');
 const child_process = require('child_process');
-const testdb = require('./testdb');
+const db = require('./db');
 
 let nytCookie = child_process.execSync('secrets.sh nyt-cookie', { encoding: 'utf8' }).trim();
 
 async function getPuzzlesFile() {
     // FIXME: need to handle initial? when db is empty
-    var results = await testdb.PuzzlesList();
+    var results = await db.PuzzlesList();
     return results;
 }
 
@@ -158,7 +158,7 @@ main();
 
 
 async function getPuzFile(puzzleId) {
-    var results = await testdb.PuzzleData(puzzleId);
+    var results = await db.PuzzleData(puzzleId);
     return results;
 }
 
@@ -270,12 +270,11 @@ async function processPuzzlePostAI(json) {
     // Save preprocessed file
     const puzzleId = json.id;
     let m = JSON.stringify(json); // adjusted by ref in callee
-    var a = await testdb.PuzzleData(puzzleId, new testdb.PuzzleDataItem({ puzzleId, data: m }));
+    var a = await db.PuzzleData(puzzleId, new db.PuzzleDataItem({ puzzleId, data: m }));
     console.log(a);
 
-    a = await testdb.PuzzlesList(new testdb.PuzzlesListItem({ puzzleId, editor: json.originalData.editor, author: json.author, date: json.originalData.publicationDate }));
+    a = await db.PuzzlesList(new db.PuzzlesListItem({ puzzleId, editor: json.originalData.editor, author: json.author, date: json.originalData.publicationDate }));
     return a;
-    //fs.writeFileSync(puzProcessedFile, m);
 
     PromisesLoadingState.completed++;
     if (PromisesLoadingState.started) {
