@@ -12,33 +12,18 @@ const zlib = require('zlib');
 const ai = require('./ai');
 const puzParser = require('./puzzleParser_NYT');
 const child_process = require('child_process');
+const testdb = require('./testdb');
 
 let nytCookie = child_process.execSync('secrets.sh nyt-cookie', { encoding: 'utf8' }).trim();
 
-function getPuzzlesFile() {
-    if (!fs.existsSync('puzzles.json')) {
-        return {
-            'NYT': []
-        };
-    }
-
-    let f = fs.readFileSync('puzzles.json', 'utf8');
-    let json = JSON.parse(f);
-    return json;
+async function getPuzzlesFile() {
+    // FIXME: need to handle initial? when db is empty
+    var results = await testdb.PuzzlesList();
+    return results;
 }
 
-function savePuzzlesFile(json) {
-    let jsonStr = JSON.stringify(json);
-    fs.writeFileSync('puzzles.json', jsonStr);
-}
-
-const allPuzzlesMap = { };
-const allPuzzles = getPuzzlesFile();
-
-for (let i = 0; i < allPuzzles.NYT.length; ++i) {
-    let existingPuzzle = allPuzzles.NYT[i];
-    allPuzzlesMap[existingPuzzle.puzzle_id] = true;
-}
+let allPuzzlesMap = null;
+let allPuzzles = [];
 
 
 const processNewPuzzles = (newPuzzles) => {
@@ -53,9 +38,7 @@ const processNewPuzzles = (newPuzzles) => {
         if (allPuzzlesMap[newPuzzle.puzzle_id]) {
 
             // Do we still have the data file?
-            let puzTitle = `nyt${puzzleid}`;
-            let puzRawFile = `data/${puzTitle}.json`;
-            if (fs.existsSync(puzRawFile)) continue;
+            continue;
         }
 
         let promise = new Promise((resolve, reject) => {
@@ -100,10 +83,7 @@ const processNewPuzzles = (newPuzzles) => {
                     try {
                         // new puzzle
                         allPuzzlesMap[puzzleid] = true;
-                        allPuzzles.NYT.push(newPuzzle);
-                        let filePath = `data/nyt${puzzleid}.json`;
-                        fs.writeFileSync(filePath, rawData);
-                        console.log(filePath);
+                        allPuzzles.push(JSON.parse(rawData));
 
                         promisesCompleted++;
                         if (finishedLoop) {
@@ -125,53 +105,61 @@ const processNewPuzzles = (newPuzzles) => {
     finishedLoop = true;
 
     Promise.all(allPromises).then(() => {
-        savePuzzlesFile(allPuzzles);
-        processPuzzleFiles(allPuzzles.NYT);
+        processPuzzleFiles(allPuzzles);
     });
 };
 
+async function main() {
+    allPuzzlesMap = { };
+    let existingPuzzles = await getPuzzlesFile();
 
-console.log('Loaded Puzzles List');
-var req = https.get('https://www.nytimes.com/svc/crosswords/v3/puzzles.json', function(res) {
-
-    if (res.statusCode !== 200) {
-        console.error(error.message);
-        // Consume response data to free up memory
-        res.resume();
-        return;
+    for (let i = 0; i < existingPuzzles.length; ++i) {
+        let existingPuzzle = existingPuzzles[i];
+        allPuzzlesMap[existingPuzzle.puzzleId] = true;
     }
 
-    res.setEncoding('utf8');
-    let rawData = '';
-    res.on('data', (chunk) => { rawData += chunk; });
-    res.on('end', () => {
-        try {
-            const parsedData = JSON.parse(rawData);
+    console.log('Loaded Puzzles List');
+    var req = https.get('https://www.nytimes.com/svc/crosswords/v3/puzzles.json', function(res) {
 
-            if (parsedData.status !== 'OK') {
-                console.error('Bad status response!');
-                console.log(rawData);
-            } else {
-                processNewPuzzles(parsedData.results);
-            }
-        } catch (e) {
-            console.error(e.message);
+        if (res.statusCode !== 200) {
+            console.error(error.message);
+            // Consume response data to free up memory
+            res.resume();
+            return;
         }
+
+        res.setEncoding('utf8');
+        let rawData = '';
+        res.on('data', (chunk) => { rawData += chunk; });
+        res.on('end', () => {
+            try {
+                const parsedData = JSON.parse(rawData);
+
+                if (parsedData.status !== 'OK') {
+                    console.error('Bad status response!');
+                    console.log(rawData);
+                } else {
+                    processNewPuzzles(parsedData.results);
+                }
+            } catch (e) {
+                console.error(e.message);
+            }
+        });
+    }).on('error', (e) => {
+        console.error(`Got error: ${e.message}`);
     });
-}).on('error', (e) => {
-    console.error(`Got error: ${e.message}`);
-});
+}
+
+main();
 
 
 
 
 
-function getPuzFile(file) {
-    let f = fs.readFileSync(file, 'utf8');
 
-    let json = JSON.parse(f);
-    let puzData = puzParser.parsePuzzle(json);
-    return puzData;
+async function getPuzFile(puzzleId) {
+    var results = await testdb.PuzzleData(puzzleId);
+    return results;
 }
 
 function adjustCluesWithAI(puzData) {
@@ -278,33 +266,39 @@ const rateLimited = () => {
     return false;
 };
 
-const processPuzzle = (puzRawFile, puzProcessedFile) => {
+async function processPuzzlePostAI(json) {
+    // Save preprocessed file
+    const puzzleId = json.id;
+    let m = JSON.stringify(json); // adjusted by ref in callee
+    var a = await testdb.PuzzleData(puzzleId, new testdb.PuzzleDataItem({ puzzleId, data: m }));
+    console.log(a);
+
+    a = await testdb.PuzzlesList(new testdb.PuzzlesListItem({ puzzleId, editor: json.originalData.editor, author: json.author, date: json.originalData.publicationDate }));
+    return a;
+    //fs.writeFileSync(puzProcessedFile, m);
+
+    PromisesLoadingState.completed++;
+    if (PromisesLoadingState.started) {
+        console.log(`${PromisesLoadingState.completed} / ${PromisesLoadingState.total}`);
+    }
+}
+
+async function processPuzzle(puzzleId, puzzleData) {
 
     if (rateLimited()) {
-        setTimeout(() => { processPuzzle(puzRawFile, puzProcessedFile); }, 1000);
+        setTimeout(() => { processPuzzle(puzzleId, puzzleData); }, 1000);
         return;
     }
 
-    console.log(`OpenAI: ${puzRawFile}`);
+    console.log(`OpenAI: ${puzzleId}`);
 
-    // Initial process of puzzleFile
-    puzData = getPuzFile(puzRawFile);
-    const promise = adjustCluesWithAI(puzData).then((json) => {
-
-        // Save preprocessed file
-        let m = JSON.stringify(json); // adjusted by ref in callee
-        fs.writeFileSync(puzProcessedFile, m);
-
-        PromisesLoadingState.completed++;
-        if (PromisesLoadingState.started) {
-            console.log(`${PromisesLoadingState.completed} / ${PromisesLoadingState.total}`);
-        }
-    });
+    let puzData = puzParser.parsePuzzle(puzzleData);
+    const promise = adjustCluesWithAI(puzData).then(processPuzzlePostAI);
 
     RateLimit.ops++;
 }
 
-const processPuzzleFiles = (puzzles) => {
+function processPuzzleFiles(puzzles) {
 
     console.log('Processing Puzzle Files');
 
@@ -312,22 +306,13 @@ const processPuzzleFiles = (puzzles) => {
 
     PromisesLoadingState.started = false;
     PromisesLoadingState.completed = 0;
-    const allPromises = [];
     for (let i = 0; i < puzzles.length; ++i) {
 
-        let puzzleid = puzzles[i].puzzle_id;
-        let puzTitle = `nyt${puzzleid}`;
-        let puzRawFile = `data/${puzTitle}.json`;
-        let puzProcessedFile = `data/${puzTitle}.processed.json`;
-
-        if (fs.existsSync(puzProcessedFile)) {
-            continue;
-        }
-
+        let puzzleId = puzzles[i].id;
         PromisesLoadingState.total++;
 
         // Check rate limiter, we may need to wait or openai will deny us
-        processPuzzle(puzRawFile, puzProcessedFile);
+        processPuzzle(puzzleId, puzzles[i]);
     }
 
     PromisesLoadingState.started = true;

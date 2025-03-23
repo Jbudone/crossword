@@ -1,18 +1,61 @@
 <?php
+
+function openConnection() {
+    $command = "bash secrets.sh DB_PASSWORD";
+    $password = trim(shell_exec($command));
+    $connection = new mysqli('mysql.jbud.me', 'jbudone', $password, 'jbud_crossword');
+    return $connection;
+}
+
 function getPuzzle($puzzleid) {
-    $inputJson = json_encode(['puzzleid' => $puzzleid]);
-    $escapedJson = escapeshellarg($inputJson);
-
-    $command = "node controller.js $escapedJson";
-    $response = shell_exec($command);
-    //$response = json_decode($outputJson, true);
-
-    return $response;
-    //header('Content-Type: application/json');
-    //return json_encode($response);
+    $connection = openConnection();
+    $statement = $connection->prepare('SELECT `data` FROM `puzzles` WHERE puzzleId = ?');
+    $statement->bind_param("i", $puzzleid);
+    $statement->execute();
+    $result = $statement->get_result();
+    $row = $result->fetch_assoc();
+    $statement->close();
+    $connection->close();
+    return $row['data'];
 }
 
 function getAllPuzzles() {
-    $f = file_get_contents('puzzles.json');
-    return $f;
+    $connection = openConnection();
+    $result = $connection->query('SELECT * FROM `puzzleList`');
+    $data = [];
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
+    }
+    $connection->close();
+    $jsonResponse = json_encode($data);
+    return $jsonResponse;
+}
+
+function saveUserState($userId, $puzzleId, $state) {
+    $connection = openConnection();
+    $statement = $connection->prepare('INSERT INTO `userPuzzleSaves` (userId, puzzleId, saveData) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `saveData` = VALUES(saveData)');
+    var_dump($userId);
+    var_dump($puzzleId);
+    $statement->bind_param("iis", $userId, $puzzleId, $state);
+    $statement->execute();
+    $statement->close();
+    $connection->close();
+}
+
+function getUserSaveState($userId, $puzzleId) {
+    $connection = openConnection();
+    $statement = $connection->prepare('SELECT `saveData` FROM `userPuzzleSaves` WHERE puzzleId = ? AND userId = ?');
+    $statement->bind_param("ii", $puzzleId, $userId);
+    $statement->execute();
+    $result = $statement->get_result();
+    $saveData = null;
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $saveData = $row['saveData'];
+    }
+    $statement->close();
+    $connection->close();
+    return $saveData;
 }

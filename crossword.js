@@ -152,13 +152,45 @@ class CrosswordGame {
             sessionState.prevPuzzleId = urlPuzzleId;
             sessionStateStr = JSON.stringify(sessionState);
             localStorage.setItem('session', sessionStateStr);
+
+            // FIXME: periodically flush to server (dirty/timer?)
+            // FIXME: timestamp on local and server state, then we can pick whichever one is newer
+            fetch('saveUserPuzzleState.php', {
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: new URLSearchParams({ userId: 1, puzzleId: urlPuzzleId, state: gameStateStr })
+            }).then((response) => {
+                console.log(response);
+                console.log(response.text());
+            }).then(data => {
+                console.log("Response from PHP:", data); // Handle the response from PHP
+            })
+            .catch(error => {
+                console.error("Error:", error); // Handle any errors
+            });
         }
     }
 
     loadGameState() {
-        const savedState = localStorage.getItem(this.puzzleId);
-        if (savedState) {
-            const gameState = JSON.parse(savedState);
+
+        // FIXME: compare timestamps
+        let savedGameState = null;
+
+        let serverSavedState = null;
+        if (window['userSavedState']) {
+            serverSavedState = userSavedState;
+            savedGameState = serverSavedState;
+        }
+
+        //const localSavedState = localStorage.getItem(this.puzzleId);
+        //if (localSavedState) {
+        //    savedGameState = JSON.parse(localSavedState);
+        //}
+
+        if (savedGameState) {
+            const gameState = savedGameState;
 
             if (gameState.isComplete) {
             //    // set complete board
@@ -283,23 +315,23 @@ class CrosswordGame {
         }
 
         let uniquePuzzles = [];
-        for (let i = 0; i < allPuzzles.NYT.length; ++i) {
-            let puzzle = allPuzzles.NYT[i];
-            if (!uniquePuzzles.find((e) => e.puzzle_id == puzzle.puzzle_id)) {
+        for (let i = 0; i < allPuzzles.length; ++i) {
+            let puzzle = allPuzzles[i];
+            if (!uniquePuzzles.find((e) => e.puzzleId == puzzle.puzzleId)) {
                 uniquePuzzles.push(puzzle);
             } 
         }
 
         uniquePuzzles.sort((a, b) => {
-            let aDate = (new Date(a.print_date)).getTime();
-            let bDate = (new Date(b.print_date)).getTime();
+            let aDate = (new Date(a.date)).getTime();
+            let bDate = (new Date(b.date)).getTime();
             return aDate > bDate;
         });
 
         let prevPuzzle, nextPuzzle, thisPuzzle;
         for (let i = 0; i < uniquePuzzles.length; ++i) {
             let puzzle = uniquePuzzles[i];
-            if (puzzle.puzzle_id == this.puzzleData.id) {
+            if (puzzle.puzzleId == this.puzzleData.id) {
                 thisPuzzle = puzzle;
                 if (i > 0) prevPuzzle = uniquePuzzles[i-1];
                 if (i < (uniquePuzzles.length-1)) nextPuzzle = uniquePuzzles[i+1];
@@ -309,10 +341,10 @@ class CrosswordGame {
 
         const prevPuzzleEl = document.getElementById('prevPuzzle');
         if (prevPuzzle) {
-            prevPuzzleEl.textContent = `Previous Puzzle: ${prevPuzzle.print_date}`;
+            prevPuzzleEl.textContent = `Previous Puzzle: ${prevPuzzle.date}`;
             prevPuzzleEl.addEventListener('click', () => {
                 // Load previous puzzle url
-                window.location.search = `?puzzleid=${prevPuzzle.puzzle_id}`
+                window.location.search = `?puzzleid=${prevPuzzle.puzzleId}`;
             });
         } else {
             prevPuzzleEl.disabled = true;
@@ -321,17 +353,17 @@ class CrosswordGame {
 
         const nextPuzzleEl = document.getElementById('nextPuzzle');
         if (nextPuzzle) {
-            nextPuzzleEl.textContent = `Next Puzzle: ${nextPuzzle.print_date}`;
+            nextPuzzleEl.textContent = `Next Puzzle: ${nextPuzzle.date}`;
             nextPuzzleEl.addEventListener('click', () => {
                 // Load nextious puzzle url
-                window.location.search = `?puzzleid=${nextPuzzle.puzzle_id}`
+                window.location.search = `?puzzleid=${nextPuzzle.puzzleId}`;
             });
         } else {
             nextPuzzleEl.disabled = true;
         }
 
 
-        document.getElementById('puzzleDate').textContent = `Published: ${thisPuzzle.print_date}`;
+        document.getElementById('puzzleDate').textContent = `Published: ${thisPuzzle.date}`;
 
         // Create grid
         const gridDiv = document.getElementById('puzzleGrid');

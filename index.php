@@ -1,17 +1,27 @@
 <!DOCTYPE html>
 <!--
  TODO
-  - automate processing and uploading puzzles 
+  - database: store puzzles + puzzles.json in database, periodically save crossword progress per-account to server (in case we lose localStorage)
+        {"author":"Peter Gorman","editor":"Will Shortz","format_type":"Normal","print_date":"2025-02-20","publish_type":"Daily","puzzle_id":22562,"title":"","version":0,"percent_filled":0,"solved":false,"star":null}
+        PUZZLES: [author, editor, date, puzzleId]
+        PUZZLE: [puzzleId, BLOB]
+        USER: [userId, userName]
+        USER_PUZZLE_SAVE: [userId, puzzleId, BLOB]
+
+        - save server gamestate less frequently
+        - timestamp on save state; pick newer one
+        - automate processing and uploading puzzles 
   - button to reveal random cells
   - fit board height to mobile screen, including (smaller) clue display -- ie. larger boards overflow
   - clue text could be too large, need to scroll down to see the rest? maybe remove fixed position and instead have it directly under the board
   - animation when ending?
   - calendar page to show which days you completed or are partial completed  (can extend this into daily trivia/etc.)
-  - save state to server? (in case we whipe localstorage or load from another browser)
+  - press/hold to unveil non-ai clue (let go brings it back to AI)
 
 
   - php config to disable cache or turn back on (for when we're in development or not)
-  - nyt login key: need to automate getting this somehow; or login from cli call
+  - cache sql results? (since it rarely changes)
+  - compress php data sending down (since its massive but all json text)
   - dreamhost security errors + .git folder
 
   - store openai key and nyt key in php config; pass along -- shouldn't matter if we perform offline
@@ -56,6 +66,13 @@ if (isset($_GET['puzzleid'])) {
 
 echo getPuzzle($puzzleid);
 ?>;
+<?php
+$userId = 1;
+$userSavedState = getUserSaveState((int)$userId, (int)$puzzleid);
+if ($userSavedState) {
+    ?>var userSavedState = <?php echo $userSavedState; ?>;<?php
+}
+?>
 </script>
     <input type="password" id="hiddenInput" maxlength="1" style="opacity: 0; position: fixed; bottom: 0px; left: 0px;" />
     
