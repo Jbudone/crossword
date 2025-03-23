@@ -9,8 +9,13 @@ function openConnection() {
 
 function getPuzzle($puzzleid) {
     $connection = openConnection();
-    $statement = $connection->prepare('SELECT `data` FROM `puzzles` WHERE puzzleId = ?');
-    $statement->bind_param("i", $puzzleid);
+    if ($puzzleid != -1) {
+        $statement = $connection->prepare('SELECT `data` FROM `puzzles` WHERE puzzleId = ?');
+        $statement->bind_param("i", $puzzleid);
+    } else {
+        $statement = $connection->prepare('SELECT * FROM `puzzles` ORDER BY `puzzleId` DESC LIMIT 1');
+    }
+
     $statement->execute();
     $result = $statement->get_result();
     $row = $result->fetch_assoc();

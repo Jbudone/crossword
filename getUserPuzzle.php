@@ -1,6 +1,9 @@
 <?php
     include('controller.php');
 
-    $puzzleId = intval($_GET['puzzleId']);
+    $puzzleId = -1;
+    if ($_GET['puzzleId']) {
+        $puzzleId = intval($_GET['puzzleId']);
+    }
 
     echo getPuzzle($puzzleId);

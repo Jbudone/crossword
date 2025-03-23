@@ -41,7 +41,16 @@ class CrosswordGame {
 
     loadPuzzleNYT() {
         const urlSearch = new URL(window.location).searchParams;
-        const urlPuzzleId = urlSearch.get('puzzleid');
+        let urlPuzzleId = urlSearch.get('puzzleid');
+        if (!urlPuzzleId) {
+            let sessionStateStr = localStorage.getItem('session');
+            let sessionState = null;
+            if (sessionStateStr) {
+                sessionState = JSON.parse(sessionStateStr);
+                urlPuzzleId = sessionState.prevPuzzleId;
+            }
+        }
+
         this.puzzleData = null;
         if (urlPuzzleId) {
             let localPuzData = localStorage.getItem(`puzzle-${urlPuzzleId}`);
@@ -52,13 +61,19 @@ class CrosswordGame {
         }
 
         // FIXME: compare puzdate against puzzles list date for puzzle; in case its been updated on server, we can fetch again
+        let uri = 'getUserPuzzle.php';
+        if (urlPuzzleId) {
+            uri += `?puzzleId=${urlPuzzleId}`;
+        }
+
         if (!this.puzzleData) {
-            fetch(`getUserPuzzle.php?puzzleId=${urlPuzzleId}`, {
+            fetch(uri, {
                 method: 'GET'
             }).then(response => response.text())
             .then((res) => {
                 this.puzzleData = JSON.parse(res);
-                localStorage.setItem(`puzzle-${urlPuzzleId}`, JSON.stringify(this.puzzleData));
+                let puzzleId = this.puzzleData.id;
+                localStorage.setItem(`puzzle-${puzzleId}`, res);
                 this.loadedPuzzleNYT();
             });
         }
