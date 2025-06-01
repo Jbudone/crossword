@@ -2,7 +2,7 @@ var OpenAI = require('openai');
 const fs = require('fs');
 const child_process = require('child_process');
 
-let openaiApiKey = child_process.execSync('~/jdrive/jstuff/work/personal/utilities/secrets.sh openai-apikey', { encoding: 'utf8' }).trim();
+let openaiApiKey = child_process.execSync('secrets.sh openai-apikey', { encoding: 'utf8' }).trim();
 
 // Models
 //  gpt-4.1-nano  gives poor results

@@ -1,9 +1,12 @@
 <?php
 
 function openConnection() {
-    $command = "bash secrets.sh DB_PASSWORD";
-    $password = trim(shell_exec($command));
-    $connection = new mysqli('mysql.jbud.me', 'jbudone', $password, 'jbud_crossword');
+    $command = "bash secrets.sh";
+    $password = trim(shell_exec($command . " DB_PASSWORD"));
+    $host = trim(shell_exec($command . " DB_HOST"));
+    $username = trim(shell_exec($command . " DB_USER"));
+    $databaseName = trim(shell_exec($command . " DB_DATABASENAME"));
+    $connection = new mysqli($host, $username, $password, $databaseName);
     return $connection;
 }
 
