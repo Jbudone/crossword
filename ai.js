@@ -4,6 +4,10 @@ const child_process = require('child_process');
 
 let openaiApiKey = child_process.execSync('~/jdrive/jstuff/work/personal/utilities/secrets.sh openai-apikey', { encoding: 'utf8' }).trim();
 
+// Models
+//  gpt-4.1-nano  gives poor results
+//  gpt-4.1-mini  gives better but still unacceptable results
+
 async function main(userContent) {
 
 
@@ -15,7 +19,7 @@ async function main(userContent) {
       //messages: [{role: "user", content: userContent}],
       //{role: "user", content:   'Given the following crossword clue and its solution, return the integer wordcount of the solution by saying only the number\n  clue: domestic animals\nsolution: catsanddogs }'
       messages: [{role: "user", content: userContent }],
-      model: "gpt-4o",
+      model: "gpt-4.1",
   });
 
   //console.log(completion.choices[0]);
