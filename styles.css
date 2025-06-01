@@ -107,11 +107,13 @@ body {
     font-weight: bold;
     font-size: 2vw;
     font-weight: lighter;
+    /*
     font-family: "Open Sans", sans-serif;
     font-family: "Raleway", sans-serif;
     font-family: "Playfair Display", serif;
     font-family: "Merriweather", serif;
     font-family: "Roboto Slab", serif;
+    */
     font-family: "Crimson Text", serif;
 }
 
@@ -202,6 +204,10 @@ body {
 
 #current-clue-display.ai-mode {
     background-color: #4e4ca2;
+}
+
+#current-clue-display.ai-mode-easy {
+    background-color: #a24c4e;
 }
 
 #clue-left {
