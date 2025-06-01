@@ -1,5 +1,6 @@
 class CrosswordGame {
     constructor() {
+        this.allPuzzles = null;
         this.puzzleId = null;
         this.puzzleData = null;
         this.currentCell = null;
@@ -21,9 +22,21 @@ class CrosswordGame {
             pos: document.getElementById('clue-pos')
         };
 
-        this.useAIClue = true;
+        this.clueType = 0; // 0: NYT, 1: GPT, 2: GPT-Easy
 
         this.loadPuzzleNYT();
+    }
+
+    loadPuzzlesList() {
+
+        let uri = 'getUserPuzzles.php';
+        fetch(uri, {
+            method: 'GET'
+        }).then(response => response.text())
+          .then((res) => {
+              this.allPuzzles = JSON.parse(res);
+              this.displayPuzzlesList();
+          });
     }
 
     loadedPuzzleNYT() {
@@ -32,6 +45,7 @@ class CrosswordGame {
             this.userState = Array(this.puzzleData.height).fill()
                 .map(() => Array(this.puzzleData.width).fill(''));
             this.displayPuzzle();
+            this.loadPuzzlesList();
         } catch (error) {
             console.error('Error parsing puzzle:', error);
             alert('Error parsing puzzle file');
@@ -40,9 +54,11 @@ class CrosswordGame {
 
 
     loadPuzzleNYT() {
+        // puzzleID in url?
         const urlSearch = new URL(window.location).searchParams;
         let urlPuzzleId = urlSearch.get('puzzleid');
         if (!urlPuzzleId) {
+            // puzzleID in localStorage.session?
             let sessionStateStr = localStorage.getItem('session');
             let sessionState = null;
             if (sessionStateStr) {
@@ -55,23 +71,29 @@ class CrosswordGame {
         if (urlPuzzleId) {
             let localPuzData = localStorage.getItem(`puzzle-${urlPuzzleId}`);
             if (localPuzData) {
-                this.puzzleData = JSON.parse(localPuzData);
-                this.loadedPuzzleNYT();
+                const localPuzDataDecomp = LZString.decompressFromBase64(localPuzData);
+                this.puzzleData = JSON.parse(localPuzDataDecomp);
+
+                if (this.puzzleData) {
+                    this.loadedPuzzleNYT();
+                    return;
+                }
             }
         }
 
         // FIXME: compare puzdate against puzzles list date for puzzle; in case its been updated on server, we can fetch again
-        let uri = 'getUserPuzzle.php';
-        if (urlPuzzleId) {
-            uri += `?puzzleId=${urlPuzzleId}`;
-        }
-
         if (!this.puzzleData) {
+            let uri = 'getUserPuzzle.php';
+            if (urlPuzzleId) {
+                uri += `?puzzleId=${urlPuzzleId}`;
+            }
+
             fetch(uri, {
                 method: 'GET'
             }).then(response => response.text())
             .then((res) => {
-                this.puzzleData = JSON.parse(res);
+                let resDecomp = LZString.decompressFromBase64(res);
+                this.puzzleData = JSON.parse(resDecomp);
                 let puzzleId = this.puzzleData.id;
                 localStorage.setItem(`puzzle-${puzzleId}`, res);
                 this.loadedPuzzleNYT();
@@ -354,12 +376,7 @@ class CrosswordGame {
         }, 3000);
     }
 
-    displayPuzzle() {
-        this.puzzleId = this.generatePuzzleId();
-
-        // Display puzzle information
-        document.getElementById('puzzleTitle').textContent = this.puzzleData.title;
-        document.getElementById('puzzleAuthor').textContent = `By: ${this.puzzleData.author}`;
+    displayPuzzlesList() {
 
         // Browser warnings
         if (window.navigator.userAgent.match(/OPR/g) != null) {
@@ -367,8 +384,8 @@ class CrosswordGame {
         }
 
         let uniquePuzzles = [];
-        for (let i = 0; i < allPuzzles.length; ++i) {
-            let puzzle = allPuzzles[i];
+        for (let i = 0; i < this.allPuzzles.length; ++i) {
+            let puzzle = this.allPuzzles[i];
             if (!uniquePuzzles.find((e) => e.puzzleId == puzzle.puzzleId)) {
                 uniquePuzzles.push(puzzle);
             } 
@@ -414,8 +431,15 @@ class CrosswordGame {
             nextPuzzleEl.disabled = true;
         }
 
+    }
 
-        document.getElementById('puzzleDate').textContent = `Published: ${thisPuzzle.date}`;
+    displayPuzzle() {
+        this.puzzleId = this.generatePuzzleId();
+
+        // Display puzzle information
+        document.getElementById('puzzleTitle').textContent = this.puzzleData.title;
+        document.getElementById('puzzleAuthor').textContent = `By: ${this.puzzleData.author}`;
+        document.getElementById('puzzleDate').textContent = `Published: ${this.puzzleData.publicationDate}`;
 
         // Create grid
         const gridDiv = document.getElementById('puzzleGrid');
@@ -576,7 +600,7 @@ class CrosswordGame {
 
 
         document.getElementById('aiToggle').addEventListener('click', (e) => {
-            this.useAIClue = !this.useAIClue;
+            this.clueType = (this.clueType > 0 ? 0 : 1);
             if (this.currentCell) {
                 const row = parseInt(this.currentCell.dataset.row);
                 const col = parseInt(this.currentCell.dataset.col);
@@ -600,6 +624,17 @@ class CrosswordGame {
         //        this.updateCurrentClue(row, col);
         //    }
         //});
+        document.getElementById('current-clue-display').addEventListener('click', (e) => {
+            this.clueType++;
+            if (this.clueType == 3) this.clueType = 0;
+            if (this.currentCell) {
+                const row = parseInt(this.currentCell.dataset.row);
+                const col = parseInt(this.currentCell.dataset.col);
+                this.updateCurrentClue(row, col);
+                this.handleCellFocus(this.currentCell);
+            }
+            e.preventDefault();
+        });
 
         this.clueElements.leftClue.addEventListener('click', (e) => {
             this.loadAdjacentClue(-1);
@@ -922,17 +957,26 @@ class CrosswordGame {
         // Find the clue
         const clueList = this.direction === 'across' ? this.puzzleData.cluesFlat.across : this.puzzleData.cluesFlat.down;
         const clueMapping = this.puzzleData.cluesGrid[row][col];
-        const clueListIdx = this.direction === 'across' ? clueMapping.acrossClue : clueMapping.downClue;
+        const acrossClue = clueMapping[0], downClue = clueMapping[1];
+        const clueListIdx = this.direction === 'across' ? acrossClue : downClue;
         const clue = clueList[clueListIdx];
+
+        this.clueElements.display.classList.remove('ai-mode');
+        this.clueElements.display.classList.remove('ai-mode-easy');
         
         if (clue) {
             // Update the current clue display
             let clueText = clue.text;
-            if (this.useAIClue) {
+            if (this.clueType == 0) {
+                // NYT
+            } else if (this.clueType == 1) {
+                // GPT
                 clueText = clue.textAI;
                 this.clueElements.display.classList.add('ai-mode');
             } else {
-                this.clueElements.display.classList.remove('ai-mode');
+                // GPT-Easy
+                clueText = clue.textAIEasy;
+                this.clueElements.display.classList.add('ai-mode-easy');
             }
 
             if (clue.wordCount > 1) {
@@ -967,7 +1011,7 @@ class CrosswordGame {
 
             const clueList = this.direction === 'across' ? this.puzzleData.cluesFlat.across : this.puzzleData.cluesFlat.down;
             const clueMapping = this.puzzleData.cluesGrid[row][col];
-            let clueListKey = this.direction === 'across' ? clueMapping.acrossClue : clueMapping.downClue;
+            let clueListKey = this.direction === 'across' ? clueMapping[0] : clueMapping[1];
             let clueListIdx = Object.keys(clueList).indexOf(`${clueListKey}`);
 
             if (step > 0) {
@@ -995,12 +1039,14 @@ class CrosswordGame {
         const cluesAcrossMap = {}, cluesDownMap = {};
         this.puzzleData.cluesGrid.forEach((row) => {
             row.forEach((col) => {
-                if (col.acrossClue != -1) {
-                    cluesAcrossMap[col.acrossClue] = this.puzzleData.cluesFlat.across[col.acrossClue];
+                let acrossClue = col[0];
+                let downClue = col[1];
+                if (acrossClue != -1) {
+                    cluesAcrossMap[acrossClue] = this.puzzleData.cluesFlat.across[acrossClue];
                 }
 
-                if (col.downClue != -1) {
-                    cluesDownMap[col.downClue] = this.puzzleData.cluesFlat.down[col.downClue];
+                if (downClue != -1) {
+                    cluesDownMap[downClue] = this.puzzleData.cluesFlat.down[downClue];
                 }
             });
         });

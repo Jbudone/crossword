@@ -7,15 +7,16 @@ function parsePuzzle(json) {
     const height = json.body[0].dimensions.height;
     const title = json.title;
     const author = json.constructors.join(' and ');
+    const editor = json.editor;
     const copyright = json.copyright;
     const puzzleId = json.id;
-    const date = json.publicationDate;
+    const publicationDate = json.publicationDate;
 
     const solution = []; // [row0, row1, ...]
     const state = [];
     let solutionRow = []; // [cell0, cell1, ...]
     let stateRow = [];
-    const cluesGrid = Array(height).fill(0).map(() => Array(width).fill(0).map(() => ({ acrossClue: -1, downClue: -1 })));
+    const cluesGrid = Array(height).fill(0).map(() => Array(width).fill(0).map(() => ([-1, -1])));
     for (let i = 0; i < json.body[0].cells.length;) {
         const cell = json.body[0].cells[i];
         let blankSpot = !('answer' in cell);
@@ -41,8 +42,8 @@ function parsePuzzle(json) {
                 const acrossClue = json.body[0].clues[acrossClueIdx],
                     downClue = json.body[0].clues[downClueIdx];
 
-                cluesGrid[row][col].acrossClue = parseInt(acrossClue.label, 10) - 1; // labels start at 1
-                cluesGrid[row][col].downClue = parseInt(downClue.label, 10) - 1; // labels start at 1
+                cluesGrid[row][col][0] = parseInt(acrossClue.label, 10) - 1; // labels start at 1
+                cluesGrid[row][col][1] = parseInt(downClue.label, 10) - 1; // labels start at 1
             }
         }
 
@@ -114,6 +115,8 @@ function parsePuzzle(json) {
         height,
         title: title,
         author: author,
+        editor: editor,
+        publicationDate: publicationDate,
         copyright: copyright,
         id: puzzleId,
         solution: solution,
@@ -121,7 +124,6 @@ function parsePuzzle(json) {
         gridNumbers: gridNumbers,
         cluesGrid: cluesGrid,
         cluesFlat: cluesFlat,
-        originalData: json
     };
 }
 
