@@ -1,25 +1,40 @@
 const child_process = require('child_process');
 const util = require('util');
-const mysql = require('mysql');
+const mysql = require('mysql2/promise');
 const should = require('should');
 
 let dbPassword = child_process.execSync('secrets.sh dreamhost-db', { encoding: 'utf8' }).trim();
 let connection = null;
 let dbQuery = null;
 
-function Connect() {
-    connection = mysql.createConnection({
+async function Connect() {
+    if (connection) {
+        throw new Error("Reconnecting when we already have a connection");
+    }
+
+    connection = await mysql.createConnection({
         host: 'mysql.jbud.me',
         user: 'jbudone',
         password: dbPassword,
         database: 'jbud_crossword'
     });
 
-    connection.connect();
-    dbQuery = util.promisify(connection.query).bind(connection);
+    if (!connection) {
+        throw new Error("Failed to make connection");
+    }
+
+    // dbQuery = util.promisify(connection.query).bind(connection);
+    dbQuery = async function(...args) {
+        [results] = await connection.query(...args);
+        return results;
+    };
 }
 
 function Disconnect() {
+    if (!connection) {
+        throw new Error("Already disconnected");
+    }
+
     connection.end();
     connection = null;
     dbQuery = null;
@@ -55,20 +70,22 @@ class PuzzlesListItem {
 }
 
 class PuzzleDataItem {
-    constructor({ puzzleId, data } = {}) {
+    constructor({ puzzleId, data, sourceData } = {}) {
         this.puzzleId = puzzleId || null;
         this.data = data || null;
+        this.sourceData = sourceData || null;
 
         should(this.puzzleId).be.above(0);
         should(this.data).be.type('string');
+        should(this.sourceData).be.type('string');
     }
 }
 
 async function PuzzlesList(addOrUpdateData) {
-    Connect();
+    await Connect();
     let res;
     if (!addOrUpdateData) {
-        res = await dbQuery('SELECT * FROM `puzzleList`');
+        res = await dbQuery('SELECT puzzleList.*, CASE WHEN puzzles.data IS NOT NULL THEN 1 ELSE 0 END AS parsedData, CASE WHEN puzzles.sourceData IS NOT NULL THEN 1 ELSE 0 END AS sourceData FROM puzzleList JOIN puzzles ON puzzleList.puzzleId=puzzles.puzzleId');
     } else {
         should(addOrUpdateData).be.an.instanceOf(PuzzlesListItem);
         const upsert = {
@@ -86,21 +103,21 @@ async function PuzzlesList(addOrUpdateData) {
 };
 
 async function PuzzleData(puzzleId, addOrUpdateData) {
-    Connect();
+    await Connect();
     if (!addOrUpdateData) {
         var res = await dbQuery('SELECT * FROM `puzzles` WHERE `puzzleId` = ?', [puzzleId]);
-        console.log(res);
     } else {
         should(addOrUpdateData).be.an.instanceOf(PuzzleDataItem);
         const upsert = {
             puzzleId: addOrUpdateData.puzzleId,
-            data: addOrUpdateData.data
+            data: addOrUpdateData.data,
+            sourceData: addOrUpdateData.sourceData
         };
 
         //var res = await dbQuery('REPLACE INTO `puzzles` SET ? WHERE `puzzleId` = ?', upsert, puzzleId);
         //var res = await dbQuery('INSERT INTO `puzzles` (puzzleId, data) VALUES (?) ON DUPLICATE KEY UPDATE data=VALUES(data)', [upsert]);
         //var res = await dbQuery('REPLACE INTO `puzzles` SET ?', upsert);
-        var res = await dbQuery('INSERT INTO `puzzles` (puzzleId, data) VALUES (?) ON DUPLICATE KEY UPDATE data=VALUES(data)', [[upsert.puzzleId, upsert.data]]);
+        var res = await dbQuery('INSERT INTO `puzzles` (puzzleId, data, sourceData) VALUES (?) ON DUPLICATE KEY UPDATE data=VALUES(data)', [[upsert.puzzleId, upsert.data, upsert.sourceData]]);
         //connection.query('INSERT INTO `puzzles` (puzzleId, data) VALUES (?)', [[upsert.puzzleId, upsert.data]], function(err, res, fields) {
         console.log(res);
     }
@@ -108,7 +125,7 @@ async function PuzzleData(puzzleId, addOrUpdateData) {
 };
 
 async function Main() {
-    const puzzle = new PuzzleDataItem({ puzzleId: 1, data: "{\"taco\":\"beef\"}" });
+    const puzzle = new PuzzleDataItem({ puzzleId: 1, data: "{\"taco\":\"beef\"}", sourceData: "{\"taco\":\"beef\"}" });
     await PuzzleData(puzzle.puzzleId, puzzle);
     await PuzzlesList(new PuzzlesListItem({ puzzleId: 1 }));
 };
