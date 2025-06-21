@@ -1,5 +1,7 @@
 <?php
 
+// FIXME: we cache big query results to separate table using npm LZString, but to decompress we need 1:1 between php and nodejs which isn't the case. So instead we exec nodejs db for puzzles list
+
 function openConnection() {
     $command = "bash secrets.sh";
     $password = trim(shell_exec($command . " DB_PASSWORD"));
@@ -28,15 +30,31 @@ function getPuzzle($puzzleid) {
 }
 
 function getAllPuzzles() {
-    $connection = openConnection();
-    $result = $connection->query('SELECT * FROM `puzzleList`');
-    $data = [];
-    if ($result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $data[] = $row;
+
+    // BIG QUERY: nodejs
+    $data = NULL;
+    $nodeResponse = shell_exec('node --eval \'(async()=>console.log(JSON.stringify(await require("./db").PuzzlesList(false, true))))()\'');
+    if ($nodeResponse) {
+        $nodeJSON = json_decode($nodeResponse);
+        if ($nodeJSON) {
+            $data = $nodeJSON;
         }
     }
-    $connection->close();
+
+    /*
+    if (!$data) {
+        $connection = openConnection();
+        $result = $connection->query('SELECT * FROM `puzzleList`');
+        $data = [];
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $data[] = $row;
+            }
+        }
+        $connection->close();
+    }
+     */
+
     $jsonResponse = json_encode($data);
     return $jsonResponse;
 }

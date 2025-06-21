@@ -2,6 +2,7 @@ const child_process = require('child_process');
 const util = require('util');
 const mysql = require('mysql2/promise');
 const should = require('should');
+const LZString = require('lz-string');
 
 let dbPassword = child_process.execSync('secrets.sh dreamhost-db', { encoding: 'utf8' }).trim();
 let connection = null;
@@ -30,12 +31,12 @@ async function Connect() {
     };
 }
 
-function Disconnect() {
+async function Disconnect() {
     if (!connection) {
         throw new Error("Already disconnected");
     }
 
-    connection.end();
+    await connection.end();
     connection = null;
     dbQuery = null;
 }
@@ -81,11 +82,123 @@ class PuzzleDataItem {
     }
 }
 
-async function PuzzlesList(addOrUpdateData) {
+async function PuzzleListBatchAddEmptyPuzzles(addData) {
     await Connect();
-    let res;
+
+    let insertListToPuzzles = [];
+    let insertListToPuzzleList = [];
+
+    for (let i = 0; i < addData.length; ++i) {
+        let item = addData[i];
+        insertListToPuzzles.push([item.puzzleId]);
+        insertListToPuzzleList.push(
+
+            //{puzzleId: item.puzzleId, editor: item.editor, author: item.author, date: item.date }
+            [item.puzzleId, item.editor, item.author, item.date]
+        );
+    }
+
+    console.log(addData);
+
+    let success = false;
+    await connection.beginTransaction();
+    try {
+        let res = await dbQuery('INSERT INTO `puzzles` (puzzleId) VALUES ?', [insertListToPuzzles]);
+        if (!res) {
+            throw "Failed to insert to puzzles";
+        }
+
+
+        res = await dbQuery('INSERT INTO `puzzleList` (puzzleId, editor, author, date) VALUES ?', [insertListToPuzzleList]);
+        if (!res) {
+            throw "Failed to insert to puzzleList";
+        }
+
+        await connection.commit();
+        success = true;
+        InvalidateCacheQuery(CACHE_PUZZLESQUERY_NAME);
+    } catch(e) {
+        console.log(e);
+        await connection.rollback();
+    }
+
+    await Disconnect();
+    return success;
+};
+
+async function SetPuzzleSource(puzzleId, source) {
+    await Connect();
+
+    update = [source, puzzleId];
+    let result = await dbQuery('UPDATE `puzzles` SET `sourceData` = ? WHERE `puzzleId` = ? LIMIT 1', update);
+
+    InvalidateCacheQuery(CACHE_PUZZLESQUERY_NAME);
+
+    await Disconnect();
+    return result && result.changedRows == 1;
+};
+
+async function SetPuzzleData(puzzleId, data) {
+    await Connect();
+
+    update = [data, puzzleId];
+    let result = await dbQuery('UPDATE `puzzles` SET `data` = ? WHERE `puzzleId` = ? LIMIT 1', update);
+
+    InvalidateCacheQuery(CACHE_PUZZLESQUERY_NAME);
+
+    await Disconnect();
+    return result && result.changedRows == 1;
+};
+
+async function InvalidateCacheQuery(name) {
+    if (name == CACHE_PUZZLESQUERY_NAME) {
+        await dbQuery('DELETE FROM `bigquery_mv` WHERE name = ? LIMIT 1', name);
+    }
+}
+
+async function CacheQuery(name, value) {
+    if (name == CACHE_PUZZLESQUERY_NAME) {
+        const jsonStr = JSON.stringify(value);
+        const cacheValue = LZString.compressToBase64(jsonStr);
+        await dbQuery('INSERT INTO `bigquery_mv` (name, value) VALUES (?) ON DUPLICATE KEY UPDATE value=VALUES(value)', [[name, cacheValue]]);
+    }
+}
+
+async function GetCachedQuery(name) {
+    if (name == CACHE_PUZZLESQUERY_NAME) {
+        const res = await dbQuery('SELECT `value` FROM `bigquery_mv` WHERE name = ? LIMIT 1', name);
+        if (!res || res.length == 0) return false;
+
+        const cache = res[0].value;
+        const decompressedVal = LZString.decompressFromBase64(cache);
+        const value = JSON.parse(decompressedVal);
+        if (!value || value.length == 0) return false;
+
+        return value;
+    }
+}
+
+const CACHE_PUZZLESQUERY_NAME = 'PuzzleList';
+const PUZZLESQUERY = 'SELECT puzzleList.*, CASE WHEN puzzles.data IS NOT NULL THEN 1 ELSE 0 END AS parsedData, CASE WHEN puzzles.sourceData IS NOT NULL THEN 1 ELSE 0 END AS sourceData FROM puzzleList JOIN puzzles ON puzzleList.puzzleId=puzzles.puzzleId';
+
+async function PuzzlesList(addOrUpdateData, useCache) {
+    await Connect();
+    let res = null;
     if (!addOrUpdateData) {
-        res = await dbQuery('SELECT puzzleList.*, CASE WHEN puzzles.data IS NOT NULL THEN 1 ELSE 0 END AS parsedData, CASE WHEN puzzles.sourceData IS NOT NULL THEN 1 ELSE 0 END AS sourceData FROM puzzleList JOIN puzzles ON puzzleList.puzzleId=puzzles.puzzleId');
+
+        if (useCache) {
+            res = await GetCachedQuery(CACHE_PUZZLESQUERY_NAME);
+            if (!res) {
+                await InvalidateCacheQuery(CACHE_PUZZLESQUERY_NAME);
+            }
+        }
+
+        if (!res) {
+            res = await dbQuery(PUZZLESQUERY);
+            if (res && res.length > 0) {
+                await CacheQuery(CACHE_PUZZLESQUERY_NAME, res);
+            }
+        }
     } else {
         should(addOrUpdateData).be.an.instanceOf(PuzzlesListItem);
         const upsert = {
@@ -97,8 +210,10 @@ async function PuzzlesList(addOrUpdateData) {
         };
 
         res = await dbQuery('REPLACE INTO `puzzleList` SET ?', upsert);
+        await InvalidateCacheQuery(CACHE_PUZZLESQUERY_NAME);
     }
-    Disconnect();
+    await Disconnect();
+
     return res;
 };
 
@@ -119,9 +234,11 @@ async function PuzzleData(puzzleId, addOrUpdateData) {
         //var res = await dbQuery('REPLACE INTO `puzzles` SET ?', upsert);
         var res = await dbQuery('INSERT INTO `puzzles` (puzzleId, data, sourceData) VALUES (?) ON DUPLICATE KEY UPDATE data=VALUES(data)', [[upsert.puzzleId, upsert.data, upsert.sourceData]]);
         //connection.query('INSERT INTO `puzzles` (puzzleId, data) VALUES (?)', [[upsert.puzzleId, upsert.data]], function(err, res, fields) {
+        InvalidateCacheQuery(CACHE_PUZZLESQUERY_NAME);
         console.log(res);
     }
-    Disconnect();
+    await Disconnect();
+    return res;
 };
 
 async function Main() {
@@ -134,5 +251,7 @@ async function Main() {
 
 module.exports = {
     PuzzlesListItem, PuzzleDataItem,
-    PuzzlesList, PuzzleData
+    PuzzlesList, PuzzleData,
+    PuzzleListBatchAddEmptyPuzzles,
+    SetPuzzleSource, SetPuzzleData
 };
