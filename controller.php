@@ -29,11 +29,11 @@ function getPuzzle($puzzleid) {
     return $row['data'];
 }
 
-function getAllPuzzles() {
+function getAllPuzzles($userId) {
 
     // BIG QUERY: nodejs
     $data = NULL;
-    $nodeResponse = shell_exec('node --eval \'(async()=>console.log(JSON.stringify(await require("./db").PuzzlesList(false, true))))()\'');
+    $nodeResponse = shell_exec('node --eval \'(async()=>console.log(JSON.stringify(await require("./db").PuzzlesList(false, true, '. $userId .'))))()\' 2>&1');
     if ($nodeResponse) {
         $nodeJSON = json_decode($nodeResponse);
         if ($nodeJSON) {
@@ -59,12 +59,12 @@ function getAllPuzzles() {
     return $jsonResponse;
 }
 
-function saveUserState($userId, $puzzleId, $state) {
+function saveUserState($userId, $puzzleId, $state, $completed) {
     $connection = openConnection();
-    $statement = $connection->prepare('INSERT INTO `userPuzzleSaves` (userId, puzzleId, saveData) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `saveData` = VALUES(saveData)');
+    $statement = $connection->prepare('INSERT INTO `userPuzzleSaves` (userId, puzzleId, saveData, completed) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE `saveData` = VALUES(saveData)');
     var_dump($userId);
     var_dump($puzzleId);
-    $statement->bind_param("iis", $userId, $puzzleId, $state);
+    $statement->bind_param("iisb", $userId, $puzzleId, $state, $completed);
     $statement->execute();
     $statement->close();
     $connection->close();

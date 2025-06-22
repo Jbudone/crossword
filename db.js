@@ -4,7 +4,7 @@ const mysql = require('mysql2/promise');
 const should = require('should');
 const LZString = require('lz-string');
 
-let dbPassword = child_process.execSync('secrets.sh dreamhost-db', { encoding: 'utf8' }).trim();
+let dbPassword = child_process.execSync('secrets.sh DB_PASSWORD', { encoding: 'utf8' }).trim();
 let connection = null;
 let dbQuery = null;
 
@@ -150,23 +150,27 @@ async function SetPuzzleData(puzzleId, data) {
     return result && result.changedRows == 1;
 };
 
-async function InvalidateCacheQuery(name) {
+async function InvalidateCacheQuery(name, userId = -1) {
     if (name == CACHE_PUZZLESQUERY_NAME) {
-        await dbQuery('DELETE FROM `bigquery_mv` WHERE name = ? LIMIT 1', name);
+        if (userId >= 0) {
+            await dbQuery('DELETE FROM `bigquery_mv` WHERE name = ? AND userId = ? LIMIT 1', [name, userId]);
+        } else {
+            await dbQuery('DELETE FROM `bigquery_mv` WHERE name = ?', name);
+        }
     }
 }
 
-async function CacheQuery(name, value) {
+async function CacheQuery(name, userId, value) {
     if (name == CACHE_PUZZLESQUERY_NAME) {
         const jsonStr = JSON.stringify(value);
         const cacheValue = LZString.compressToBase64(jsonStr);
-        await dbQuery('INSERT INTO `bigquery_mv` (name, value) VALUES (?) ON DUPLICATE KEY UPDATE value=VALUES(value)', [[name, cacheValue]]);
+        await dbQuery('INSERT INTO `bigquery_mv` (name, value, userId) VALUES (?) ON DUPLICATE KEY UPDATE value=VALUES(value)', [[name, cacheValue, userId]]);
     }
 }
 
-async function GetCachedQuery(name) {
+async function GetCachedQuery(name, userId) {
     if (name == CACHE_PUZZLESQUERY_NAME) {
-        const res = await dbQuery('SELECT `value` FROM `bigquery_mv` WHERE name = ? LIMIT 1', name);
+        const res = await dbQuery('SELECT `value` FROM `bigquery_mv` WHERE name = ? AND userId = ? LIMIT 1', [name, userId]);
         if (!res || res.length == 0) return false;
 
         const cache = res[0].value;
@@ -179,24 +183,24 @@ async function GetCachedQuery(name) {
 }
 
 const CACHE_PUZZLESQUERY_NAME = 'PuzzleList';
-const PUZZLESQUERY = 'SELECT puzzleList.*, CASE WHEN puzzles.data IS NOT NULL THEN 1 ELSE 0 END AS parsedData, CASE WHEN puzzles.sourceData IS NOT NULL THEN 1 ELSE 0 END AS sourceData FROM puzzleList JOIN puzzles ON puzzleList.puzzleId=puzzles.puzzleId';
+const PUZZLESQUERY = 'SELECT puzzleList.*, COALESCE(userPuzzleSaves.completed, 0) AS completed, CASE WHEN puzzles.data IS NOT NULL THEN 1 ELSE 0 END AS parsedData, CASE WHEN puzzles.sourceData IS NOT NULL THEN 1 ELSE 0 END AS sourceData FROM puzzleList LEFT JOIN puzzles ON puzzleList.puzzleId=puzzles.puzzleId LEFT JOIN userPuzzleSaves ON puzzleList.puzzleId=userPuzzleSaves.puzzleId AND userPuzzleSaves.userId = ?';
 
-async function PuzzlesList(addOrUpdateData, useCache) {
+async function PuzzlesList(addOrUpdateData, useCache, userId) {
     await Connect();
     let res = null;
     if (!addOrUpdateData) {
 
         if (useCache) {
-            res = await GetCachedQuery(CACHE_PUZZLESQUERY_NAME);
+            res = await GetCachedQuery(CACHE_PUZZLESQUERY_NAME, userId);
             if (!res) {
-                await InvalidateCacheQuery(CACHE_PUZZLESQUERY_NAME);
+                await InvalidateCacheQuery(CACHE_PUZZLESQUERY_NAME, userId);
             }
         }
 
         if (!res) {
-            res = await dbQuery(PUZZLESQUERY);
+            res = await dbQuery(PUZZLESQUERY, userId);
             if (res && res.length > 0) {
-                await CacheQuery(CACHE_PUZZLESQUERY_NAME, res);
+                await CacheQuery(CACHE_PUZZLESQUERY_NAME, userId, res);
             }
         }
     } else {
@@ -242,9 +246,11 @@ async function PuzzleData(puzzleId, addOrUpdateData) {
 };
 
 async function Main() {
-    const puzzle = new PuzzleDataItem({ puzzleId: 1, data: "{\"taco\":\"beef\"}", sourceData: "{\"taco\":\"beef\"}" });
-    await PuzzleData(puzzle.puzzleId, puzzle);
-    await PuzzlesList(new PuzzlesListItem({ puzzleId: 1 }));
+    //const puzzle = new PuzzleDataItem({ puzzleId: 1, data: "{\"taco\":\"beef\"}", sourceData: "{\"taco\":\"beef\"}" });
+    //await PuzzleData(puzzle.puzzleId, puzzle);
+    //await PuzzlesList(new PuzzlesListItem({ puzzleId: 1 }));
+    const list = await PuzzlesList(false, true, 1);
+    console.log(list);
 };
 
 //Main();

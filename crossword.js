@@ -90,7 +90,13 @@ class CrosswordGame {
 
             fetch(uri, {
                 method: 'GET'
-            }).then(response => response.text())
+            }).then((response) => {
+                if (response.status != 200) {
+                    return false;
+                }
+
+                return response.text()
+            })
             .then((res) => {
                 let resDecomp = LZString.decompressFromBase64(res);
                 this.puzzleData = JSON.parse(resDecomp);
@@ -220,7 +226,7 @@ class CrosswordGame {
             }
 
             // periodically flush to server
-            setTimeout(this.saveGameStateToServer.bind(this, urlPuzzleId, gameStateStr), 8000);
+            setTimeout(this.saveGameStateToServer.bind(this, urlPuzzleId, gameStateStr, isComplete), 8000);
         }
     }
 
@@ -231,7 +237,7 @@ class CrosswordGame {
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded"
             },
-            body: new URLSearchParams({ userId: 1, puzzleId: urlPuzzleId, state: gameStateStr })
+            body: new URLSearchParams({ userId: 1, puzzleId: urlPuzzleId, state: gameStateStr, completed: completed })
         }).then((response) => {
             console.log(response);
             console.log(response.text());
