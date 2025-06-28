@@ -1,7 +1,7 @@
 class CrosswordGame {
     constructor() {
         this.allPuzzles = null;
-        this.puzzleId = null;
+        this.puzzleId = null; // int value of puzzleId
         this.puzzleData = null;
         this.currentCell = null;
         this.direction = 'across';
@@ -10,6 +10,10 @@ class CrosswordGame {
         this.autoCheck = true; // Add this flag
         this.lastClickTime = 0;
         this.keyIsDown = false;
+        this.queuedSaveGameState = null;
+        this.isComplete = false;
+        
+
 
         this.wordCells = new Map(); // Store word cells for quick lookup
 
@@ -138,11 +142,6 @@ class CrosswordGame {
         }
     }
 
-    generatePuzzleId() {
-        // Create a unique ID based on puzzle title and date
-        return `puzzle_${this.puzzleData.id}`.replace(/\s+/g, '_');
-    }
-
     saveGameState() {
         let cells = "";
         let hasInput = false;
@@ -182,7 +181,7 @@ class CrosswordGame {
             }
         }
 
-
+        this.isComplete = isComplete;
         let state = 0; // 0 blank, 1 partial, 2 solved
         if (isComplete) {
             state = 2;
@@ -201,43 +200,40 @@ class CrosswordGame {
         }
 
         let gameStateStr = JSON.stringify(gameState);
-        localStorage.setItem(`${this.puzzleId}_save`, gameStateStr);
+        localStorage.setItem(`puzzle_${this.puzzleId}_save`, gameStateStr);
 
-        // FIXME: Only need to do this on first update in session
-        const urlSearch = new URL(window.location).searchParams;
-        const urlPuzzleId = urlSearch.get('puzzleid');
-        if (urlPuzzleId) {
-            let sessionStateStr = localStorage.getItem('session');
-            let sessionState = null;
-            if (sessionStateStr) {
-                sessionState = JSON.parse(sessionStateStr);
-            } else {
-                sessionState = {
-                    prevPuzzleId: 0,
-                };
-            }
+        let sessionStateStr = localStorage.getItem('session');
+        let sessionState = null;
+        if (sessionStateStr) {
+            sessionState = JSON.parse(sessionStateStr);
+        } else {
+            sessionState = {
+                prevPuzzleId: 0,
+            };
+        }
 
-            sessionState.prevPuzzleId = urlPuzzleId;
-            sessionStateStr = JSON.stringify(sessionState);
-            localStorage.setItem('session', sessionStateStr);
+        sessionState.prevPuzzleId = this.puzzleId;
+        sessionStateStr = JSON.stringify(sessionState);
+        localStorage.setItem('session', sessionStateStr);
 
-            if (this.queuedSaveGameState) {
-                clearTimeout(this.queuedSaveGameState);
-            }
-
-            // periodically flush to server
-            setTimeout(this.saveGameStateToServer.bind(this, urlPuzzleId, gameStateStr, isComplete), 8000);
+        const SAVE_QUEUE_TIME = 8000;
+        if (!this.queuedSaveGameState) {
+            this.queuedSaveGameState = setTimeout(this.saveGameStateToServer.bind(this), SAVE_QUEUE_TIME);
         }
     }
 
-    saveGameStateToServer(urlPuzzleId, gameStateStr) {
+    saveGameStateToServer() {
+
+        this.queuedSaveGameState = null;
+        let gameStateStr = localStorage.getItem(`puzzle_${this.puzzleId}_save`);
+        let completed = this.isComplete ? 1 : 0;
 
         fetch('saveUserPuzzleState.php', {
             method: 'POST',
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded"
             },
-            body: new URLSearchParams({ userId: 1, puzzleId: urlPuzzleId, state: gameStateStr, completed: completed })
+            body: new URLSearchParams({ userId: 1, puzzleId: this.puzzleId, state: gameStateStr, completed })
         }).then((response) => {
             console.log(response);
             console.log(response.text());
@@ -260,7 +256,7 @@ class CrosswordGame {
         }
 
         // Local storage
-        const localSavedStateStr = localStorage.getItem(`${this.puzzleId}_save`);
+        const localSavedStateStr = localStorage.getItem(`puzzle_${this.puzzleId}_save`);
         if (localSavedStateStr) {
             const localSavedState = JSON.parse(localSavedStateStr);
             if (!savedGameState || !savedGameState.timestamp || (new Date(savedGameState.timestamp)) < (new Date(localSavedState.timestamp))) {
@@ -440,7 +436,8 @@ class CrosswordGame {
     }
 
     displayPuzzle() {
-        this.puzzleId = this.generatePuzzleId();
+
+        this.puzzleId = this.puzzleData.id;
 
         // Display puzzle information
         document.getElementById('puzzleTitle').textContent = this.puzzleData.title;

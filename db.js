@@ -4,7 +4,7 @@ const mysql = require('mysql2/promise');
 const should = require('should');
 const LZString = require('lz-string');
 
-let dbPassword = child_process.execSync('secrets.sh DB_PASSWORD', { encoding: 'utf8' }).trim();
+let dbPassword = child_process.execSync(path.join(__dirname, 'secrets.sh') + ' DB_PASSWORD', { encoding: 'utf8' }).trim();
 let connection = null;
 let dbQuery = null;
 

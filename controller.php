@@ -61,10 +61,8 @@ function getAllPuzzles($userId) {
 
 function saveUserState($userId, $puzzleId, $state, $completed) {
     $connection = openConnection();
-    $statement = $connection->prepare('INSERT INTO `userPuzzleSaves` (userId, puzzleId, saveData, completed) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE `saveData` = VALUES(saveData)');
-    var_dump($userId);
-    var_dump($puzzleId);
-    $statement->bind_param("iisb", $userId, $puzzleId, $state, $completed);
+    $statement = $connection->prepare('INSERT INTO `userPuzzleSaves` (userId, puzzleId, saveData, completed) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE `saveData` = VALUES(saveData), `completed` = VALUES(completed)');
+    $statement->bind_param("iisi", $userId, $puzzleId, $state, $completed);
     $statement->execute();
     $statement->close();
     $connection->close();

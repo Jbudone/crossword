@@ -5,6 +5,7 @@
   - automate processing and uploading puzzles 
   - mysql key for users: client, downloadpuz
   - crossword json version: migrate up to convert the json from earlier version to later version: eg. change  `clues: { original: "nyt", revised: "chatgpt" }` to `clues: { original: "nyt", revised: "chatgpt", revisedEasyVersion: "" }
+  - puzzle list: from server-  we store lzcompressed, we can pass that and decompress on client side rather than server side
   - puzzle list: cache in localStorage -> fetch ajax -> compare against localStorage -> if changed then update localStorage and reload(?); only fetch puzzles within a specified range on ajax
   - puzzle sql: store originalData + processedData separately; also minimize processedData size (eg. state unnecessary)
   - php config to disable cache or turn back on (for when we're in development or not)
