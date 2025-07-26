@@ -1,0 +1,90 @@
+body {
+    background: #DDF;
+}
+
+#calendar {
+    width: 300px;
+    background: #F0F0F0;
+}
+
+.calendar-dayofweek {
+    font-size: 14px;
+    font-family: Fredoka;
+}
+
+#calendar-header {
+    display: flex;
+
+    background: purple;
+    padding: 4px;
+    color: #FFF;
+    font-weight: bold;
+    border-radius: 5px 5px 0px 0px;
+    height: 40px;
+    font-family: Fredoka;
+    font-size: 28px;
+    font-weight: 500;
+}
+
+#calendar-header-left {
+    width: 20px;
+}
+
+#calendar-header-right {
+    width: 20px;
+}
+
+#calendar-header-current {
+    flex: 1;
+    text-align: center;
+}
+
+#calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    justify-items: center;
+
+    row-gap: 10px;
+}
+
+.calendar-grid-date {
+    background-color: blue;
+    width: 30px;
+    flex: 1;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+    border-radius: 6px;
+    background-image: linear-gradient(180deg, #FFF3, #FFF0);
+    border: 1px solid #55F;
+    box-shadow: #FFF2 0 1px 0 inset, #4480 0 1px 1px;
+    box-sizing: border-box;
+    color: #FFF;
+    font-family: Inter,sans-serif;
+    font-weight: 500;
+}
+
+.cell-completed {
+    background-color: green;
+}
+
+.cell-noparse {
+    background-color: purple;
+}
+
+.cell-nosource {
+    background-color: red;
+}
+
+.cell-noentry {
+    opacity: 0.8;
+    background-color: #888;
+    color: #444;
+}
+
+.calendar-grid-date.disabled {
+    background-image: none;
+    box-shadow: none;
+    opacity: 0.25;
+    font-weight: 200;
+}
