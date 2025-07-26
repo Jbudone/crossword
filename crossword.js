@@ -76,6 +76,9 @@ class CrosswordGame {
             let localPuzData = localStorage.getItem(`puzzle-${urlPuzzleId}`);
             if (localPuzData) {
                 const json = JSON.parse(localPuzData);
+                if (json.saveData) {
+                    window['userSavedState'] = JSON.parse(json.saveData);
+                }
                 const localPuzDataDecomp = LZString.decompressFromBase64(json.data);
                 this.puzzleData = JSON.parse(localPuzDataDecomp);
 
