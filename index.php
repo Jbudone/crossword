@@ -56,10 +56,11 @@
         <p id="puzzleDate"></p>
 
         <div class="buttons">
-            <button id="prevPuzzle" class="button">Previous Puzzle</button>
-            <button id="aiToggle" class="button">AI Toggle</button>
+            <button id="prevPuzzle" class="button"> ◀ </button>
+            <button id="aiToggle" class="button"> 🤖 </button>
+            <button id="calendarView" class="button"> 📅 </button>
             <button id="revealCells" class="button">Random Reveal</button>
-            <button id="nextPuzzle" class="button">Next Puzzle</button>
+            <button id="nextPuzzle" class="button"> ▶ </button>
         </div>
 
         <div id="browser-warning">Browser not supported. Only built and tested for Firefox or Chrome.</div>

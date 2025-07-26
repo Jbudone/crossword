@@ -34,9 +34,9 @@ include('controller.php');
 <body>
     <div id="calendar">
         <div id="calendar-header">
-            <div id="calendar-header-left" class="calendar-header-child"> L </div>
-            <div id="calendar-header-current" class="calendar-header-child"> JUN 2025 </div>
-            <div id="calendar-header-right" class="calendar-header-child"> R </div>
+            <div id="calendar-header-left" class="calendar-header-child"> ◀ </div>
+            <div id="calendar-header-current" class="calendar-header-child"> </div>
+            <div id="calendar-header-right" class="calendar-header-child"> ▶ </div>
         </div>
         <div id="calendar-grid">
             <div class="calendar-dayofweek">SUN</div>

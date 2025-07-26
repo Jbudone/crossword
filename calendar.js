@@ -1,5 +1,22 @@
 let allPuzzles = [];
 
+let settings = {
+    lastDate: null
+};
+
+let SaveSettings = () => {
+    const json = JSON.stringify(settings);
+    localStorage.setItem('settings', json);
+};
+
+let LoadSettings = () => {
+    if (localStorage.getItem('settings')) {
+        const str = localStorage.getItem('settings');
+        const json = JSON.parse(str);
+        settings = json;
+    }
+};
+
 class CalendarDate {
     constructor() {
         this.year = 0;
@@ -23,6 +40,10 @@ class CalendarDate {
         this.year = year;
         this.month = month;
         this.daysInMonth = this.getDaysInMonth();
+
+        let date = new Date(this.year, this.month, 1);
+        settings.lastDate = date;
+        SaveSettings();
     };
 
     getDaysInMonth() {
@@ -96,7 +117,7 @@ class CalendarGrid {
             const DAYS_OF_WEEK = [ "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" ];
 
             const gridCellEl = document.createElement('div');
-            gridCellEl.className = 'calendar-grid-date';
+            gridCellEl.className = 'calendar-grid-date cell-noday';
             gridCellEl.textContent = "-";
             gridCellEl.setAttribute('cal-day-type', 0);
             this.gridEl.appendChild(gridCellEl);
@@ -118,9 +139,8 @@ class CalendarGrid {
 };
 
 class CalendarObj {
-    constructor(gridEl, headerEl) {
+    constructor(gridEl, headerEl, curDate) {
 
-        const curDate = new Date();
         this.calDate = new CalendarDate();
         this.calDate.setDate(curDate.getFullYear(), curDate.getMonth());
 
@@ -213,7 +233,12 @@ async function initialLoad() {
 
     allPuzzles = await getPuzzles();
 
-    const curDate = new Date();
+    LoadSettings();
+    if (!settings.lastDate) {
+        settings.lastDate = new Date();
+    }
+
+    const curDate = new Date(settings.lastDate);
     const calDate = new CalendarDate();
     calDate.setDate(curDate.getFullYear(), curDate.getMonth());
     for (let i = 1; i <= calDate.daysInMonth; ++i) {
@@ -224,7 +249,7 @@ async function initialLoad() {
     const calGridEl = document.getElementById('calendar-grid');
     const calHeaderEl = document.getElementById('calendar-header');
     //const calGrid = new CalendarGrid(calGridEl);
-    const calObj = new CalendarObj(calGridEl, calHeaderEl);
+    const calObj = new CalendarObj(calGridEl, calHeaderEl, curDate);
 };
 
 document.addEventListener('DOMContentLoaded', async function() {

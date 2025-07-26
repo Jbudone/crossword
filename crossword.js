@@ -412,7 +412,6 @@ class CrosswordGame {
 
         const prevPuzzleEl = document.getElementById('prevPuzzle');
         if (prevPuzzle) {
-            prevPuzzleEl.textContent = `Previous Puzzle: ${prevPuzzle.date}`;
             prevPuzzleEl.addEventListener('click', () => {
                 // Load previous puzzle url
                 window.location.search = `?puzzleid=${prevPuzzle.puzzleId}`;
@@ -424,7 +423,6 @@ class CrosswordGame {
 
         const nextPuzzleEl = document.getElementById('nextPuzzle');
         if (nextPuzzle) {
-            nextPuzzleEl.textContent = `Next Puzzle: ${nextPuzzle.date}`;
             nextPuzzleEl.addEventListener('click', () => {
                 // Load nextious puzzle url
                 window.location.search = `?puzzleid=${nextPuzzle.puzzleId}`;
@@ -616,6 +614,11 @@ class CrosswordGame {
 
         document.getElementById('revealCells').addEventListener('click', (e) => {
             this.revealRandomCells(5);
+            e.preventDefault();
+        });
+
+        document.getElementById('calendarView').addEventListener('click', (e) => {
+            window.location = 'calendar.php';
             e.preventDefault();
         });
 

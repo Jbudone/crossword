@@ -3,20 +3,20 @@ body {
 }
 
 #calendar {
-    width: 300px;
+    width: 100%;
     background: #F0F0F0;
 }
 
 .calendar-dayofweek {
     font-size: 14px;
-    font-family: Fredoka;
+    font-family: Roboto Slab;
 }
 
 #calendar-header {
     display: flex;
 
     background: purple;
-    padding: 4px;
+    padding: 4px 12px;;
     color: #FFF;
     font-weight: bold;
     border-radius: 5px 5px 0px 0px;
@@ -24,6 +24,7 @@ body {
     font-family: Fredoka;
     font-size: 28px;
     font-weight: 500;
+    box-shadow: 0 2px 2px 0px purple;
 }
 
 #calendar-header-left {
@@ -36,32 +37,39 @@ body {
 
 #calendar-header-current {
     flex: 1;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     justify-items: center;
+    margin-top: 10px;
 
-    row-gap: 10px;
+    row-gap: 8px;
+    column-gap: 8px;
 }
 
 .calendar-grid-date {
     background-color: blue;
-    width: 30px;
+    width: 100%;
     flex: 1;
-    height: 30px;
+    aspect-ratio: 1;
     text-align: center;
-    line-height: 30px;
     border-radius: 6px;
     background-image: linear-gradient(180deg, #FFF3, #FFF0);
     border: 1px solid #55F;
     box-shadow: #FFF2 0 1px 0 inset, #4480 0 1px 1px;
     box-sizing: border-box;
     color: #FFF;
-    font-family: Inter,sans-serif;
+    font-family: Fredoka;
     font-weight: 500;
+    font-size: 8cqw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .cell-completed {
@@ -79,6 +87,12 @@ body {
 .cell-noentry {
     opacity: 0.8;
     background-color: #888;
+    color: #444;
+}
+
+.cell-noday {
+    opacity: 0.3;
+    background-color: #444;
     color: #444;
 }
 
