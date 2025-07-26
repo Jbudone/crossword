@@ -75,7 +75,8 @@ class CrosswordGame {
         if (urlPuzzleId) {
             let localPuzData = localStorage.getItem(`puzzle-${urlPuzzleId}`);
             if (localPuzData) {
-                const localPuzDataDecomp = LZString.decompressFromBase64(localPuzData);
+                const json = JSON.parse(localPuzData);
+                const localPuzDataDecomp = LZString.decompressFromBase64(json.data);
                 this.puzzleData = JSON.parse(localPuzDataDecomp);
 
                 if (this.puzzleData) {
@@ -102,7 +103,16 @@ class CrosswordGame {
                 return response.text()
             })
             .then((res) => {
-                let resDecomp = LZString.decompressFromBase64(res);
+                const json = JSON.parse(res);
+                if (!json) {
+                    // bad puzzle
+                    return;
+                }
+
+                if (json.saveData) {
+                    window['userSavedState'] = JSON.parse(json.saveData);
+                }
+                let resDecomp = LZString.decompressFromBase64(json.data);
                 this.puzzleData = JSON.parse(resDecomp);
                 let puzzleId = this.puzzleData.id;
                 localStorage.setItem(`puzzle-${puzzleId}`, res);

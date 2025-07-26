@@ -189,21 +189,26 @@ class CalendarObj {
             const cell = document.querySelector(`[cal-day-date="${date.getDate()}"]`);
 
             cell.classList.remove('cell-noentry');
+            let entry = true;
             if (puzzle.completed == 1) {
                 cell.classList.add('cell-completed');
             }
 
             if (puzzle.parsedData == 0) {
                 cell.classList.add('cell-noparse');
+                entry = false;
             }
 
             if (puzzle.sourceData == 0) {
                 cell.classList.add('cell-nosource');
+                entry = false;
             }
 
-            cell.onclick = () => {
-                window.location = `index.php?puzzleid=${puzzle.puzzleId}`;
-            };
+            if (entry) {
+                cell.onclick = () => {
+                    window.location = `index.php?puzzleid=${puzzle.puzzleId}`;
+                };
+            }
         }
     };
 

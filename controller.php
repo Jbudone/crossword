@@ -12,6 +12,21 @@ function openConnection() {
     return $connection;
 }
 
+function getUserPuzzle($puzzleid, $userId) {
+    $connection = openConnection();
+
+    // FIXME: want to include $userId but they may not have a save state, in which case we'd want to use null
+    $statement = $connection->prepare('SELECT `data`, userPuzzleSaves.saveData, userPuzzleSaves.completed, userPuzzleSaves.updated FROM `puzzles` LEFT JOIN `userPuzzleSaves` ON puzzles.puzzleId = userPuzzleSaves.puzzleId WHERE puzzles.puzzleId = ?');
+    $statement->bind_param("i", $puzzleid);
+
+    $statement->execute();
+    $result = $statement->get_result();
+    $row = $result->fetch_assoc();
+    $statement->close();
+    $connection->close();
+    return $row;
+}
+
 function getPuzzle($puzzleid) {
     $connection = openConnection();
     if ($puzzleid != -1) {
