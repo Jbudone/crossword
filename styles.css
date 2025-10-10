@@ -198,6 +198,7 @@ button {
     font-family: Fredoka;
     font-size: 16px;
     min-height: 40px;
+    margin-bottom: env(keyboard-inset-height);
 
     position: fixed;
     left: 0px;

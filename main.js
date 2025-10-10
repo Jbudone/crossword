@@ -1,6 +1,6 @@
 
 // Wait for the DOM to be fully loaded
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Update copyright year
     updateCopyrightYear();
 
@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const game = new CrosswordGame();
+    await game.initialize();
     window['game'] = game;
     /*
         const parser = new PuzzleParser();

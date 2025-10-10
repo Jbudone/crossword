@@ -12,9 +12,8 @@ class CrosswordGame {
         this.keyIsDown = false;
         this.queuedSaveGameState = null;
         this.isComplete = false;
+        this.userSavedState = null;
         
-
-
         this.wordCells = new Map(); // Store word cells for quick lookup
 
         this.clueElements = {
@@ -28,11 +27,15 @@ class CrosswordGame {
 
         this.clueType = 0; // 0: NYT, 1: GPT, 2: GPT-Easy
 
-        this.loadPuzzleNYT();
+    }
+
+    async initialize() {
+        await this.loadPuzzleNYT();
     }
 
     loadPuzzlesList() {
 
+        // all user's puzzles
         let uri = 'getUserPuzzles.php';
         fetch(uri, {
             method: 'GET'
@@ -43,12 +46,30 @@ class CrosswordGame {
           });
     }
 
-    loadedPuzzleNYT() {
+    // FIXME: WIP for polling changes
+    syncPuzzle() {
+
+        // longpoll any changes to puzzle from same user but different client uuid
+        let uri = 'pollPuzzleChanges.php';
+        if (!this.clientUuid) {
+            this.clientUuid = Math.floor(Math.random() * 1000000);
+        }
+
+        fetch(uri + `?uuid=${this.clientUuid}`, {
+            method: 'GET'
+        }).then(response => response.text())
+          .then((res) => {
+              // FIXME: sync changes
+              this.syncPuzzle();
+          });
+    }
+
+    async loadedPuzzleNYT() {
 
         try {
             this.userState = Array(this.puzzleData.height).fill()
                 .map(() => Array(this.puzzleData.width).fill(''));
-            this.displayPuzzle();
+            await this.displayPuzzle();
             this.loadPuzzlesList();
         } catch (error) {
             console.error('Error parsing puzzle:', error);
@@ -57,7 +78,7 @@ class CrosswordGame {
     }
 
 
-    loadPuzzleNYT() {
+    async loadPuzzleNYT() {
         // puzzleID in url?
         const urlSearch = new URL(window.location).searchParams;
         let urlPuzzleId = urlSearch.get('puzzleid');
@@ -69,59 +90,79 @@ class CrosswordGame {
                 sessionState = JSON.parse(sessionStateStr);
                 urlPuzzleId = sessionState.prevPuzzleId;
             }
+            else {
+                // None -- default to some arbitrary known puzzleid
+                urlPuzzleId = 22697;
+            }
         }
 
+        let savedGameState = null;
         this.puzzleData = null;
-        if (urlPuzzleId) {
-            let localPuzData = localStorage.getItem(`puzzle-${urlPuzzleId}`);
-            if (localPuzData) {
-                const json = JSON.parse(localPuzData);
-                if (json.saveData) {
-                    window['userSavedState'] = JSON.parse(json.saveData);
-                }
-                const localPuzDataDecomp = LZString.decompressFromBase64(json.data);
-                this.puzzleData = JSON.parse(localPuzDataDecomp);
 
-                if (this.puzzleData) {
-                    this.loadedPuzzleNYT();
-                    return;
-                }
+        // Fetch puzzle from localStorage
+        let localPuzData = localStorage.getItem(`puzzle_${urlPuzzleId}`); // puzData
+        if (localPuzData) {
+            const json = JSON.parse(localPuzData);
+
+            // Load local puzData
+            const localPuzDataDecomp = LZString.decompressFromBase64(json.data);
+            this.puzzleData = JSON.parse(localPuzDataDecomp);
+
+            // Load local savedState (if exists)
+            let localSave = localStorage.getItem(`puzzle_${urlPuzzleId}_save`); // local saveState
+            if (localSave) {
+                savedGameState = JSON.parse(localSave);
             }
         }
 
-        // FIXME: compare puzdate against puzzles list date for puzzle; in case its been updated on server, we can fetch again
-        if (!this.puzzleData) {
-            let uri = 'getUserPuzzle.php';
-            if (urlPuzzleId) {
-                uri += `?puzzleId=${urlPuzzleId}`;
+        // Fetch puzzle from cloud: puzData (if not stored locally), and savedState (if exists on cloud)
+        // NOTE: we fetch always, in case server has more recent savedState (from another client)
+        let uri = 'getUserPuzzle.php';
+        if (urlPuzzleId) {
+            uri += `?puzzleId=${urlPuzzleId}`;
+
+            // Do we already have puzData? Then we only want savedState
+            if (this.puzzleData != null) {
+                uri += `&saveStateOnly=1`;
+            }
+        }
+
+        fetch(uri, {
+            method: 'GET'
+        }).then((response) => {
+            if (response.status != 200) {
+                return false;
             }
 
-            fetch(uri, {
-                method: 'GET'
-            }).then((response) => {
-                if (response.status != 200) {
-                    return false;
-                }
+            return response.text()
+        })
+        .then((res) => {
+            const json = JSON.parse(res);
+            if (!json) {
+                // bad puzzle
+                return;
+            }
 
-                return response.text()
-            })
-            .then((res) => {
-                const json = JSON.parse(res);
-                if (!json) {
-                    // bad puzzle
-                    return;
-                }
-
-                if (json.saveData) {
-                    window['userSavedState'] = JSON.parse(json.saveData);
-                }
+            // load puzData
+            if (json.data) {
                 let resDecomp = LZString.decompressFromBase64(json.data);
                 this.puzzleData = JSON.parse(resDecomp);
                 let puzzleId = this.puzzleData.id;
-                localStorage.setItem(`puzzle-${puzzleId}`, res);
-                this.loadedPuzzleNYT();
-            });
-        }
+                localStorage.setItem(`puzzle_${puzzleId}`, res); // puzdata
+            }
+
+            // load saveData
+            const cloudSaveData = json.saveData && JSON.parse(json.saveData);
+            if (cloudSaveData) {
+                // NOTE: only load if newer than local saveData
+                if (!savedGameState || !savedGameState.timestamp || (new Date(savedGameState.timestamp)) < (new Date(cloudSaveData.timestamp))) {
+                    savedGameState = cloudSaveData;
+                }
+            }
+            
+            this.userSavedState = savedGameState;
+            this.loadedPuzzleNYT();
+        });
     }
 
     updateDirectionHighlight() {
@@ -213,7 +254,7 @@ class CrosswordGame {
         }
 
         let gameStateStr = JSON.stringify(gameState);
-        localStorage.setItem(`puzzle_${this.puzzleId}_save`, gameStateStr);
+        localStorage.setItem(`puzzle_${this.puzzleId}_save`, gameStateStr); // saved gameState
 
         let sessionStateStr = localStorage.getItem('session');
         let sessionState = null;
@@ -238,7 +279,7 @@ class CrosswordGame {
     saveGameStateToServer() {
 
         this.queuedSaveGameState = null;
-        let gameStateStr = localStorage.getItem(`puzzle_${this.puzzleId}_save`);
+        let gameStateStr = localStorage.getItem(`puzzle_${this.puzzleId}_save`); // saved gameState
         let completed = this.isComplete ? 1 : 0;
 
         fetch('saveUserPuzzleState.php', {
@@ -257,41 +298,18 @@ class CrosswordGame {
         });
     }
 
-    loadGameState() {
+    async loadGameState() {
 
-        let savedGameState = null;
-
-        // Server storage
-        let serverSavedState = null;
-        if (window['userSavedState']) {
-            serverSavedState = userSavedState;
-            savedGameState = serverSavedState;
-        }
-
-        // Local storage
-        const localSavedStateStr = localStorage.getItem(`puzzle_${this.puzzleId}_save`);
-        if (localSavedStateStr) {
-            const localSavedState = JSON.parse(localSavedStateStr);
-            if (!savedGameState || !savedGameState.timestamp || (new Date(savedGameState.timestamp)) < (new Date(localSavedState.timestamp))) {
-                // Only use local storage if newer than server storage
-                savedGameState = localSavedState;
-            }
-        }
-
-        if (savedGameState) {
-            const gameState = savedGameState;
-
-            if (gameState.isComplete) {
+        let gameState = this.userSavedState;
+        if (gameState.isComplete) {
             //    // set complete board
-                this.restoreCompleteBoard();
-            } else if (gameState.cells) {
-                // restore partial board
-                this.restoreCellValues(gameState.cells);
-            }
-
-            return true;
+            this.restoreCompleteBoard();
+        } else if (gameState.cells) {
+            // restore partial board
+            this.restoreCellValues(gameState.cells);
         }
-        return false;
+
+        return true;
     }
 
     restoreCellValues(cells) {
@@ -353,19 +371,6 @@ class CrosswordGame {
         }
     }
 
-
-    setupAutoSave() {
-        // Save state after each input
-        //const puzzleContainer = document.getElementById('puzzle-container');
-        //puzzleContainer.addEventListener('input', () => {
-        //    this.saveGameState();
-        //});
-        
-        // Save state before user leaves the page
-        //window.addEventListener('beforeunload', () => {
-        //    this.saveGameState();
-        //});
-    }
 
     showRestoredMessage() {
         const message = document.createElement('div');
@@ -446,7 +451,7 @@ class CrosswordGame {
 
     }
 
-    displayPuzzle() {
+    async displayPuzzle() {
 
         this.puzzleId = this.puzzleData.id;
 
@@ -664,12 +669,8 @@ class CrosswordGame {
         });
 
         // Load saved state if it exists
-        const hasRestoredState = this.loadGameState();
-        
-        // Add auto-save functionality
-        //this.setupAutoSave();
-        
-        if (hasRestoredState) {
+        if (this.userSavedState) {
+            await this.loadGameState();
             this.showRestoredMessage();
         }
     }
