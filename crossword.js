@@ -46,7 +46,7 @@ class CrosswordGame {
           });
     }
 
-    // FIXME: WIP for polling changes
+    // FIXME: WIP for polling changes --
     syncPuzzle() {
 
         // longpoll any changes to puzzle from same user but different client uuid
@@ -92,6 +92,7 @@ class CrosswordGame {
             }
             else {
                 // None -- default to some arbitrary known puzzleid
+                // FIXME: we should instead load all crosswords and then find the newest
                 urlPuzzleId = 22697;
             }
         }
@@ -128,6 +129,7 @@ class CrosswordGame {
         }
 
         fetch(uri, {
+            cache: 'no-cache', // cache busting user saves
             method: 'GET'
         }).then((response) => {
             if (response.status != 200) {
