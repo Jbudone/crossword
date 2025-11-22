@@ -88,6 +88,23 @@ class CrosswordGame {
             }
         });
 
+        await channel.presence.subscribe('enter', (member) => {
+            console.log("MEMBER ENTERED");
+            console.log(member.data);
+        });
+
+        await channel.presence.subscribe('leave', (member) => {
+            console.log("MEMBER LEFT");
+            console.log(member.data);
+
+            const cells = document.querySelectorAll('.puzzle-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('friend-current-word');
+            });
+        });
+
+        await channel.presence.enterClient(clientId);
+
         this.pubSub = channel;
     }
 
@@ -206,9 +223,9 @@ class CrosswordGame {
             if (cloudSaveData) {
                 // NOTE: only load if newer than local saveData
                 // FIXME: I ALWAYS use cloud storage right now (stomped over in server). Because there's time mismatch between server and client; need to sync somehow --
-                if (!savedGameState || !savedGameState.timestamp || (new Date(savedGameState.timestamp)) < (new Date(cloudSaveData.timestamp))) {
+                //if (!savedGameState || !savedGameState.timestamp || (new Date(savedGameState.timestamp)) < (new Date(cloudSaveData.timestamp))) {
                     savedGameState = cloudSaveData;
-                }
+                //}
             }
             
             this.userSavedState = savedGameState;
