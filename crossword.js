@@ -22,11 +22,13 @@ class CrosswordGame {
             leftClue: document.getElementById('clue-left'),
             rightClue: document.getElementById('clue-right'),
             text: document.getElementById('clue-text'),
-            pos: document.getElementById('clue-pos')
         };
 
         this.clueType = 0; // 0: NYT, 1: GPT, 2: GPT-Easy
 
+        // For interactive play
+        this.pubSub = null;
+        this.pubSubClient = null;
     }
 
     async initialize() {
@@ -46,22 +48,66 @@ class CrosswordGame {
           });
     }
 
-    // FIXME: WIP for polling changes --
-    syncPuzzle() {
+    async initPubSub() {
 
-        // longpoll any changes to puzzle from same user but different client uuid
-        let uri = 'pollPuzzleChanges.php';
-        if (!this.clientUuid) {
-            this.clientUuid = Math.floor(Math.random() * 1000000);
-        }
+        // FIXME: presence - recognize disconnect to remove "friend-current-word"
+        // FIXME: consider inactive and active pubsub based off presence -- no one else connected? then don't send input changes. Someone connected? Start sending input + selection changes, plus the initial state (current selected word)
 
-        fetch(uri + `?uuid=${this.clientUuid}`, {
-            method: 'GET'
-        }).then(response => response.text())
-          .then((res) => {
-              // FIXME: sync changes
-              this.syncPuzzle();
-          });
+        // FIXME: crossword DB userID with deviceID
+        const clientIdN = parseInt(Math.random() * 1000000),
+            clientId = `client-${clientIdN}`;
+
+        this.pubSubClient = clientId;
+        const channelName = `crossword-id-${this.puzzleId}`;
+
+        const client = new Ably.Realtime({ key, clientId });
+
+        await client.connection.once('connected');
+
+        const channel = client.channels.get(channelName);
+
+        await channel.subscribe((message) => {
+            if (message.clientId == this.pubSubClient) return; // loopback
+            //console.log('RECEIVED ' + message.data);
+
+            const json = message.data;
+            if (json.setCell) {
+                const cell = this.getCellInput(json.row, json.col);
+                this.setCell(cell, json.char, json.cheated);
+            } else if (json.selectCells) {
+
+                const cells = document.querySelectorAll('.puzzle-cell');
+                cells.forEach(cell => {
+                    cell.classList.remove('friend-current-word');
+                });
+
+                json.selectCells.forEach((cell) => {
+                    const cellEl = this.getCellInput(cell.row, cell.col);
+                    cellEl.parentElement.classList.add('friend-current-word');
+                });
+            }
+        });
+
+        this.pubSub = channel;
+    }
+
+    async pubSubSend(msg) {
+        await this.pubSub.publish('test', msg);
+    }
+
+    async pubSubSendInput(row, col, char, cheated) {
+        // Cheated: revealed cell rather than manually answering
+        this.pubSubSend({
+            setCell: true,
+            row, col, char,
+            cheated
+        });
+    }
+
+    async pubSubSendSelected(cells) {
+        this.pubSubSend({
+            selectCells: cells
+        });
     }
 
     async loadedPuzzleNYT() {
@@ -71,6 +117,8 @@ class CrosswordGame {
                 .map(() => Array(this.puzzleData.width).fill(''));
             await this.displayPuzzle();
             this.loadPuzzlesList();
+
+            await this.initPubSub();
         } catch (error) {
             console.error('Error parsing puzzle:', error);
             alert('Error parsing puzzle file');
@@ -92,7 +140,7 @@ class CrosswordGame {
             }
             else {
                 // None -- default to some arbitrary known puzzleid
-                // FIXME: we should instead load all crosswords and then find the newest
+                // FIXME: we should instead load all crosswords and then find the newest -
                 urlPuzzleId = 22697;
             }
         }
@@ -157,6 +205,7 @@ class CrosswordGame {
             const cloudSaveData = json.saveData && JSON.parse(json.saveData);
             if (cloudSaveData) {
                 // NOTE: only load if newer than local saveData
+                // FIXME: I ALWAYS use cloud storage right now (stomped over in server). Because there's time mismatch between server and client; need to sync somehow --
                 if (!savedGameState || !savedGameState.timestamp || (new Date(savedGameState.timestamp)) < (new Date(cloudSaveData.timestamp))) {
                     savedGameState = cloudSaveData;
                 }
@@ -165,20 +214,6 @@ class CrosswordGame {
             this.userSavedState = savedGameState;
             this.loadedPuzzleNYT();
         });
-    }
-
-    updateDirectionHighlight() {
-        // Remove all previous highlighting
-        const cells = document.querySelectorAll('.puzzle-cell');
-        cells.forEach(cell => {
-            cell.classList.remove('current-word-across', 'current-word-down');
-        });
-
-        if (this.currentCell) {
-            const row = parseInt(this.currentCell.dataset.row);
-            const col = parseInt(this.currentCell.dataset.col);
-            this.highlightCurrentWord(row, col);
-        }
     }
 
     validateCell(input, row, col) {
@@ -465,7 +500,6 @@ class CrosswordGame {
         // Create grid
         const gridDiv = document.getElementById('puzzleGrid');
         const table = document.createElement('table');
-        //table.className = 'puzzle-grid';
         table.className = 'flex-table-2';
 
         for (let row = 0; row < this.puzzleData.height; row++) {
@@ -492,121 +526,18 @@ class CrosswordGame {
                     input.dataset.row = row;
                     input.dataset.col = col;
                     input.dataset.value = '';
-
-                    let onInput = (e) => {
-                        if (e.key === 'F5') return;
-                        if (this.keyIsDown) return;
-                        this.keyIsDown = true;
-                        if (this.currentCell) {
-                            if (e.key === 'Backspace' || e.key === 'Delete') {
-                                e.preventDefault();
-
-                                const row = parseInt(this.currentCell.dataset.row, 10);
-                                const col = parseInt(this.currentCell.dataset.col, 10);
-                                const cellSolution = this.puzzleData.solution[row][col];
-
-                                let clearNextCell = false;
-                                if (this.currentCell.dataset.value == '') {
-                                    clearNextCell = true;
-                                } else if (this.currentCell.dataset.value != cellSolution) {
-                                    this.currentCell.dataset.value = '';
-                                    this.currentCell.innerText = '';
-                                    this.userState[row][col] = '';
-                                }
-
-                                this.moveToPrevCell(row, col);
-
-                                if (clearNextCell) {
-                                    const nextRow = parseInt(this.currentCell.dataset.row, 10);
-                                    const nextCol = parseInt(this.currentCell.dataset.col, 10);
-                                    this.currentCell.dataset.value = '';
-                                    this.currentCell.innerText = '';
-                                    this.userState[nextRow][nextCol] = '';
-                                }
-                            } else {
-                                this.handleCellInput(this.currentCell, e);
-                                //this.handleArrowKeys(this.currentCell, e);
-                            }
-
-                            e.preventDefault();
-                        }
-                    };
-
                     //input.addEventListener('focus', (e) => this.handleCellFocus(e.target, e));
-                    //document.addEventListener('keydown', (e) => {
-                    //    onInput(e);
-                    //});
-                    document.getElementById('hiddenInput').addEventListener('keydown', (e) => {
-                        if (e.key === 'Backspace') {
-                            onInput(e);
-                        }
-                    });
-
-                    document.getElementById('hiddenInput').addEventListener('input', (e) => {
-                        // Mobile is weird, so we have to check hidden input for OSK event
-                        if (!e.key) {
-                            e.key = document.getElementById('hiddenInput').value;
-                            if (e.key === '') {
-                                // delete
-                                e.key = 'Backspace';
-                            }
-                            document.getElementById('hiddenInput').value = '';
-                            onInput(e);
-                        }
-                    });
-
-                    document.addEventListener('keyup', (e) => {
-                        this.keyIsDown = false;
-                    });
                     //input.addEventListener('focus', (e) => {
                     //    this.handleCellFocus(e.target, e);
                     //    e.target.select();
                     //    this.selectionStart = this.selectionEnd;
                     //});
 
-                    // Add space key handler to toggle direction
-                    input.addEventListener('keydown', (e) => {
-                        if (e.key === ' ') {
-                            e.preventDefault();
-                            this.toggleDirection();
-                            this.handleCellFocus(e.target);
-                        }
-                    });
                     input.addEventListener('click', (e) => {
-                        //this.toggleDirection();
                         this.handleCellClick(e.target, e);
-                        //input.setSelectionRange(input.value.length, input.value.length);
                         e.preventDefault();
                     });
 
-                    input.addEventListener('mousedown', (e) => {
-                        //input.setSelectionRange(input.value.length, input.value.length);
-                        e.preventDefault();
-                    });
-
-                    input.addEventListener('mouseup', (e) => {
-                        //input.setSelectionRange(input.value.length, input.value.length);
-                        e.preventDefault();
-                    });
-
-
-                    // Prevent paste
-                    input.addEventListener('paste', (e) => {
-                        e.preventDefault();
-                    });
-
-                    // Prevent drag and drop
-                    input.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                    });
-
-                    input.addEventListener('dblclick', (e) => {
-                        this.handleCellDblClick(e.target, e);
-                        e.preventDefault();
-                        //input.setSelectionRange(input.value.length, input.value.length);
-                    });
-                    //inputWrapper.appendChild(input);
-                    //td.appendChild(inputWrapper);
                     td.appendChild(input);
                 }
                 tr.appendChild(td);
@@ -620,11 +551,66 @@ class CrosswordGame {
         this.setupClues();
 
 
+        let onInput = (key) => {
+            if (this.currentCell) {
+                let char = null;
+                if (key === 'Backspace' || key === 'Delete' || key === '') {
+                    char = '';
+                } else {
+                    char = key.toUpperCase();
+                }
+
+                this.handleCellInput(this.currentCell, char);
+                this.saveGameState();
+            }
+        };
+
+        //document.addEventListener('keydown', (e) => {
+        //    onInput(e);
+        //});
+        document.getElementById('hiddenInput').addEventListener('keydown', (e) => {
+            if (e.key === 'F5') return;
+            if (this.keyIsDown) return;
+            this.keyIsDown = true;
+            // FIXME: broke this on PC, probably just need to focus hiddenInput and get rid of this if below to always onInput
+            if (e.key === 'Backspace') {
+                e.preventDefault();
+                onInput('Backspace');
+            }
+        });
+
+        document.getElementById('hiddenInput').addEventListener('input', (e) => {
+            // Mobile is weird, so we have to check hidden input for OSK event
+            if (e.key === 'F5') return;
+            if (!e.key) {
+                e.preventDefault();
+                let char = document.getElementById('hiddenInput').value;
+                if (e.key === '') {
+                    // delete
+                    char = 'Backspace';
+                }
+                document.getElementById('hiddenInput').value = '';
+                onInput(char);
+            }
+        });
+
+        // hook keys
+        Object.values(document.getElementsByClassName('keyboard-key'))
+            .forEach((k) => {
+                const data = k.attributes['data'].value;
+                k.addEventListener('mousedown', (e) => { onInput(data); });
+                k.addEventListener('mouseup', (e) => { this.keyIsDown = false; }); // FIXME: probably don't need this anymore
+            });
+
+        document.addEventListener('keyup', (e) => {
+            this.keyIsDown = false;
+        });
+
+
         document.getElementById('aiToggle').addEventListener('click', (e) => {
             this.clueType = (this.clueType > 0 ? 0 : 1);
             if (this.currentCell) {
-                const row = parseInt(this.currentCell.dataset.row);
-                const col = parseInt(this.currentCell.dataset.col);
+                const { row, col } = this.getRowCol(this.currentCell);
                 this.updateCurrentClue(row, col);
                 this.handleCellFocus(this.currentCell);
             }
@@ -654,8 +640,7 @@ class CrosswordGame {
             this.clueType++;
             if (this.clueType == 3) this.clueType = 0;
             if (this.currentCell) {
-                const row = parseInt(this.currentCell.dataset.row);
-                const col = parseInt(this.currentCell.dataset.col);
+                const { row, col } = this.getRowCol(this.currentCell);
                 this.updateCurrentClue(row, col);
                 this.handleCellFocus(this.currentCell);
             }
@@ -681,16 +666,22 @@ class CrosswordGame {
         return document.querySelector(`.input[data-row="${row}"][data-col="${col}"]`);
     }
 
+    getRowCol(cell) {
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
+
+        return { row, col };
+    }
+
     handleCellFocus(input) {
         if (this.currentCell) {
             this.currentCell.classList.remove('focus');
         }
 
-        document.getElementById('hiddenInput').focus();
+        //document.getElementById('hiddenInput').focus();
         this.currentCell = input;
         input.classList.add('focus');
-        const row = parseInt(input.dataset.row);
-        const col = parseInt(input.dataset.col);
+        const { row, col } = this.getRowCol(input);
         this.updateAllCellsHighlight();
         this.updateCurrentClue(row, col);
 
@@ -714,23 +705,60 @@ class CrosswordGame {
     }
 
     handleCellDblClick(input) {
-        const row = parseInt(this.currentCell.dataset.row);
-        const col = parseInt(this.currentCell.dataset.col);
+        const { row, col } = this.getRowCol(this.currentCell);
         this.revealCell(row, col);
+        this.updateCurrentClue(row, col);
+        this.saveGameState();
     }
 
-    handleCellInput(input, event) {
-        // Prevent the default behavior
-        event.preventDefault();
+    setCell(cell, char, revealed) {
+        const { row, col } = this.getRowCol(cell);
 
-        let row = parseInt(input.dataset.row);
-        let col = parseInt(input.dataset.col);
+        // Replace the current value
+        this.userState[row][col] = char;
+        cell.dataset.value = char;
+        cell.innerText = char;
+        if (revealed) {
+            cell.dataset.revealed = 'true';
+            cell.classList.add('revealed-cell');
+        }
 
-        // Get the typed character
-        const char = event.key.toUpperCase();
+        if (!revealed && this.autoCheck) {
+            this.validateCell(cell, row, col);
+        }
 
-        // Only process alphabetic characters
-        if (/^[A-Z]$/.test(char)) {
+    }
+
+    handleCellInput(cell, char) {
+        console.log(cell);
+        const { row, col } = this.getRowCol(cell);
+        console.log(row);
+        console.log(col);
+
+        // Delete?
+        if (char == '') {
+            const cellSolution = this.puzzleData.solution[row][col];
+
+            let clearNextCell = false;
+            if (this.currentCell.dataset.value == '') {
+                clearNextCell = true;
+            } else if (this.currentCell.dataset.value != cellSolution) {
+                this.currentCell.dataset.value = '';
+                this.currentCell.innerText = '';
+                this.userState[row][col] = '';
+            }
+
+            this.moveToPrevCell(row, col);
+
+            if (clearNextCell) {
+                const nextRow = parseInt(this.currentCell.dataset.row, 10);
+                const nextCol = parseInt(this.currentCell.dataset.col, 10);
+                this.currentCell.dataset.value = '';
+                this.currentCell.innerText = '';
+                this.userState[nextRow][nextCol] = '';
+            }
+        } else if (/^[A-Z]$/.test(char)) {
+            // Only process alphabetic characters
 
             if (this.autoCheck && this.isCellCorrect(row, col)) {
                 // first move to next cell
@@ -747,30 +775,17 @@ class CrosswordGame {
 
                 row = newRow;
                 col = newCol;
-                input = this.currentCell;
+                cell = this.currentCell;
             }
 
-            // Replace the current value
-            input.dataset.value = char;
-            input.innerText = char;
-
-            // Update user state
-            this.userState[row][col] = char;
-
-            // Validate if autoCheck is enabled
-            if (this.autoCheck) {
-                this.validateCell(input, row, col);
-            }
+            this.setCell(cell, char, false);
 
             // Move to next cell
             this.moveToNextCell(row, col);
         }
 
-        // update current clue, in case we solved the word
         this.updateCurrentClue(row, col);
-
-        // Save state after each input
-        this.saveGameState();
+        this.pubSubSendInput(row, col, char, false);
     }
 
     isCellCorrect(row, col) {
@@ -798,8 +813,7 @@ class CrosswordGame {
         //document.getElementById('direction-text').textContent = 
         //    this.direction.charAt(0).toUpperCase() + this.direction.slice(1);
         if (this.currentCell) {
-            const row = parseInt(this.currentCell.dataset.row);
-            const col = parseInt(this.currentCell.dataset.col);
+            const { row, col } = this.getRowCol(this.currentCell);
             this.updateAllCellsHighlight();
             this.updateCurrentClue(row, col);
         }
@@ -885,8 +899,7 @@ class CrosswordGame {
 
     // Update arrow key navigation to use smart navigation
     handleArrowKeys(input, event) {
-        const row = parseInt(input.dataset.row);
-        const col = parseInt(input.dataset.col);
+        const { row, col } = this.getRowCol(input);
 
         if (event.key.startsWith('Arrow')) {
             event.preventDefault();
@@ -937,14 +950,15 @@ class CrosswordGame {
             // Don't reveal if we already have the solution
             if (input.dataset.value !== char)
             {
-                input.dataset.value = char;
-                input.dataset.revealed = "true";
-                input.innerText = char;
-                this.userState[row][col] = char;
-                input.classList.add('revealed-cell');
-            }
+                //input.dataset.value = char;
+                //input.dataset.revealed = "true";
+                //input.innerText = char;
+                //this.userState[row][col] = char;
+                //input.classList.add('revealed-cell');
 
-            this.saveGameState();
+                this.setCell(input, char, true);
+                this.pubSubSendInput(row, col, char, true);
+            }
         }
     }
 
@@ -968,6 +982,8 @@ class CrosswordGame {
 
             this.revealCell(cell.row, cell.col);
         }
+
+        this.saveGameState();
     }
 
     updateCurrentClue(row, col) {
@@ -1028,8 +1044,7 @@ class CrosswordGame {
 
     loadAdjacentClue(step) {
         if (this.currentCell) {
-            const row = parseInt(this.currentCell.dataset.row);
-            const col = parseInt(this.currentCell.dataset.col);
+            const { row, col } = this.getRowCol(this.currentCell);
 
             const clueList = this.direction === 'across' ? this.puzzleData.cluesFlat.across : this.puzzleData.cluesFlat.down;
             const clueMapping = this.puzzleData.cluesGrid[row][col];
@@ -1209,7 +1224,7 @@ class CrosswordGame {
         const cells = document.querySelectorAll('.puzzle-cell');
         cells.forEach(cell => {
             cell.classList.remove('word-cell-across', 'word-cell-down', 
-                               'current-word-across', 'current-word-down');
+                               'current-word');
         });
 
         // Apply word cell highlighting
@@ -1225,8 +1240,7 @@ class CrosswordGame {
 
         // If there's a current cell, highlight its word
         if (this.currentCell) {
-            const row = parseInt(this.currentCell.dataset.row);
-            const col = parseInt(this.currentCell.dataset.col);
+            const { row, col } = this.getRowCol(this.currentCell);
             this.highlightCurrentWord(row, col);
         }
     }
@@ -1235,10 +1249,12 @@ class CrosswordGame {
         // Clear previous current word highlighting
         const cells = document.querySelectorAll('.puzzle-cell');
         cells.forEach(cell => {
-            cell.classList.remove('current-word-across', 'current-word-down');
+            cell.classList.remove('current-word');
         });
 
-        const highlightClass = `current-word-${this.direction}`;
+        const highlightClass = 'current-word';
+
+        const highlightedCells = [];
 
         if (this.direction === 'across') {
             // Highlight current row
@@ -1246,6 +1262,7 @@ class CrosswordGame {
             while (currentCol >= 0 && this.getCellInput(row, currentCol)) {
                 const cell = this.getCellInput(row, currentCol);
                 cell.parentElement.classList.add(highlightClass);
+                highlightedCells.push({ row: row, col: currentCol });
                 currentCol--;
             }
             currentCol = col + 1;
@@ -1253,6 +1270,7 @@ class CrosswordGame {
                    this.getCellInput(row, currentCol)) {
                 const cell = this.getCellInput(row, currentCol);
                 cell.parentElement.classList.add(highlightClass);
+                highlightedCells.push({ row: row, col: currentCol });
                 currentCol++;
             }
         } else {
@@ -1261,6 +1279,7 @@ class CrosswordGame {
             while (currentRow >= 0 && this.getCellInput(currentRow, col)) {
                 const cell = this.getCellInput(currentRow, col);
                 cell.parentElement.classList.add(highlightClass);
+                highlightedCells.push({ row: currentRow, col: col });
                 currentRow--;
             }
             currentRow = row + 1;
@@ -1268,9 +1287,12 @@ class CrosswordGame {
                    this.getCellInput(currentRow, col)) {
                 const cell = this.getCellInput(currentRow, col);
                 cell.parentElement.classList.add(highlightClass);
+                highlightedCells.push({ row: currentRow, col: col });
                 currentRow++;
             }
         }
+
+        this.pubSubSendSelected(highlightedCells);
     }
 
     getAcrossWord(row, col) {
@@ -1307,39 +1329,6 @@ class CrosswordGame {
         }
 
         return cells;
-    }
-
-    highlightClue(row, col) {
-        // Remove highlighting from all clues
-        document.querySelectorAll('.clue-item').forEach(div => {
-            div.classList.remove('highlighted');
-        });
-
-        // Get the clue number for the current word
-        const number = this.getWordNumber(row, col);
-        if (number) {
-            // Find and highlight the corresponding clue div
-            const clueDiv = this.findClueDiv(this.direction, number);
-            if (clueDiv) {
-                clueDiv.classList.add('highlighted');
-                // Scroll the clue into view
-                //clueDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-        }
-    }
-
-    getWordNumber(row, col) {
-        // Get all cells in the current word
-        const cells = this.direction === 'across' 
-            ? this.getAcrossWord(row, col) 
-            : this.getDownWord(row, col);
-
-        // Return the number of the first cell in the word
-        if (cells.length > 0) {
-            const startCell = cells[0];
-            return this.puzzleData.gridNumbers[startCell.row][startCell.col];
-        }
-        return null;
     }
 
     findClueDiv(direction, number) {

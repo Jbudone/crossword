@@ -50,6 +50,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&amp;display=swap" rel="stylesheet">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js" integrity="sha512-qtX0GLM3qX8rxJN1gyDfcnMFFrKvixfoEOwbBib9VafR5vbChV5LeE5wSI/x+IlCkTY5ZFddFDCCfaVJJNnuKQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 </head>
 <body>
     <input type="password" id="hiddenInput" maxlength="1" style="opacity: 0; position: fixed; bottom: 0px; left: 0px;" />
@@ -72,12 +74,9 @@
 
     <div id="puzzle-container">
         <div id="puzzleGrid"></div>
+<!--
         <div id="clue-pos"></div>
-        <div id="current-clue-display" class="ai-mode">
-            <div id="clue-left">👈</div>
-            <div id="clue-text"></div>
-            <div id="clue-right">👉</div>
-        </div>
+-->
         <div id="current-clue-explanation"></div>
         <div class="clue-lists">
             <div class="clue-section">
@@ -90,6 +89,51 @@
             </div>
         </div>
     </div>
+
+    <div id="puzzle-foot" class="keyboard-active">
+        <div id="current-clue-display" class="ai-mode">
+            <div id="clue-left">👈</div>
+            <div id="clue-text"></div>
+            <div id="clue-right">👉</div>
+        </div>
+        <div id="keyboard">
+            <div class="keyboard-row">
+    <span class="keyboard-key" data="Q">Q</span>
+    <span class="keyboard-key" data="W">W</span>
+    <span class="keyboard-key" data="E">E</span>
+    <span class="keyboard-key" data="R">R</span>
+    <span class="keyboard-key" data="T">T</span>
+    <span class="keyboard-key" data="Y">Y</span>
+    <span class="keyboard-key" data="U">U</span>
+    <span class="keyboard-key" data="I">I</span>
+    <span class="keyboard-key" data="O">O</span>
+    <span class="keyboard-key" data="P">P</span>
+            </div>
+            <div class="keyboard-row">
+    <span class="keyboard-key" data="A">A</span>
+    <span class="keyboard-key" data="S">S</span>
+    <span class="keyboard-key" data="D">D</span>
+    <span class="keyboard-key" data="F">F</span>
+    <span class="keyboard-key" data="G">G</span>
+    <span class="keyboard-key" data="H">H</span>
+    <span class="keyboard-key" data="J">J</span>
+    <span class="keyboard-key" data="K">K</span>
+    <span class="keyboard-key" data="L">L</span>
+            </div>
+            <div class="keyboard-row">
+    <span class="keyboard-key" data="Z">Z</span>
+    <span class="keyboard-key" data="X">X</span>
+    <span class="keyboard-key" data="C">C</span>
+    <span class="keyboard-key" data="V">V</span>
+    <span class="keyboard-key" data="B">B</span>
+    <span class="keyboard-key" data="N">N</span>
+    <span class="keyboard-key" data="M">M</span>
+
+    <span class="keyboard-key" data="Backspace">⤶</span>
+            </div>
+        </div>
+    </div>
+
     <script src="crossword.js?nocache=<?php echo time(); ?>"></script>
     <script src="main.js"></script>
 

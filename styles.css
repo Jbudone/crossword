@@ -1,3 +1,8 @@
+:root {
+    --keyboard-height: 120px;
+    --clue-height: 70px; /* FIXME: currently not hardcoded in clue */
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -6,12 +11,69 @@ body {
     color: #333;
 }
 
+#puzzle-foot {
+    position: fixed;
+    bottom: 0px;
+    display: block;
+    z-index: 4;
+    overflow: hidden;
+
+}
+
+#keyboard {
+    position: fixed;
+    bottom: 0px;
+    height: var(--keyboard-height);
+    width: 100%;
+    display: block;
+    background: #FFF;
+    text-align: center;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.keyboard-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.keyboard-key {
+    display: block;
+    margin: 2px;
+    background: #F0F0F0;
+    border-color: #333;
+    border-width: 3px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: #fafafa;
+    color: #707070;
+    border: 2px solid rgba(255,255,255,.04);
+    border-bottom-width: 2px;
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+    border-bottom-width: 2px;
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+    -webkit-box-shadow: 0 4px 0 .04px rgba(0,0,0,.1);
+    box-shadow: 0 2px 0 .04px rgba(0,0,0,.1);
+    border-bottom-color: rgba(255,255,255,.1);
+    border-bottom-width: 4px;
+    font-weight: 400;
+    font-size: 22px;
+    width: 18px;
+    height: 22px;
+    cursor: pointer;
+    user-select: none;
+}
+
 #browser-warning {
     margin: 10px;
     color: red;
     display: none;
     overflow-wrap: break-word;
     line-height: 20px;
+
+    height: 40px;
 }
 
 .visible {
@@ -70,6 +132,7 @@ button {
     max-width: 1200px;
     margin: 0 auto;
     flex-flow: row wrap;
+    padding-bottom: calc(var(--keyboard-height) + var(--clue-height));
 }
 
 .puzzle-grid {
@@ -140,7 +203,7 @@ button {
     font-size: 10px;
     pointer-events: none;
     color: #666;
-    z-index: 1;
+    /*z-index: 1;*/
     margin-top: -1px;
 }
 
@@ -152,10 +215,6 @@ button {
     background-color: #a8d1ff;
 }
 
-.in-current-word {
-    background-color: #e6f3ff;
-}
-
 .clue-lists {
     flex: 1;
     display: flex;
@@ -164,6 +223,8 @@ button {
     max-height: 600px;
     overflow-y: auto;
     margin-top: 20px;
+
+    display: none;
 }
 
 .clue-section {
@@ -213,10 +274,12 @@ button {
     white-space: pre-line;
 
     display: grid;
-    grid-template-columns: 5% 1fr 5%;
+    grid-template-columns: 50px 1fr 50px;
     grid-template-rows: 1fr;
     grid-column-gap: 0px;
     grid-row-gap: 0px; 
+
+    bottom: var(--keyboard-height);
 }
 
 #current-clue-display.ai-mode {
@@ -252,16 +315,6 @@ button {
     display: block;
 }
 
-.controls {
-    margin: 20px;
-    text-align: center;
-}
-
-.controls button {
-    margin: 0 5px;
-    padding: 5px 10px;
-}
-/* Add these to your existing CSS */
 .puzzle-cell .input.correct-cell {
     color: #2e7d32;
 }
@@ -274,7 +327,7 @@ button {
     color: #1a1ac6;
 }
 
-/* Optional: Add animation for validation feedback */
+/* FIXME: animation */
 @keyframes validationFeedback {
     0% { transform: scale(1); }
     50% { transform: scale(1.1); }
@@ -287,6 +340,7 @@ button {
     animation: validationFeedback 0.2s ease-in-out;
 }
 
+/* FIXME: animation */
 @keyframes correctCellFlash {
     0% { background-color: transparent; }
     50% { background-color: rgba(46, 125, 50, 0.2); }
@@ -297,40 +351,32 @@ button {
     animation: correctCellFlash 0.5s ease-out;
 }
 
-.current-word-across {
+.friend-current-word {
+    background-color: #f5a5ff;
+}
+
+.current-word {
     background-color: #a7d8ff;
 }
 
-.current-word-down {
-    background-color: #a7d8ff;
-}
-
-.current-word-down .input.focus {
+.current-word .input.focus {
     background-color: #86b6ff;
 }
 
-.current-word-across .input.focus {
-    background-color: #86b6ff;
+.friend-current-word.current-word {
+    background-color: #f7ffbe;
 }
 
-/* Optional: Add visual indicator for current direction */
-.direction-indicator {
-    position: fixed;
-    padding: 5px 10px;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.friend-current-word.current-word .input.focus {
+    background-color: #ffb686;
 }
 
-/* Cell with focus */
 .puzzle-cell .input.focus {
     outline: 2px solid #4a90e2;
     z-index: 2;
     position: relative;
 }
 
-/* Optional: Add subtle transition for smooth highlighting changes */
 .puzzle-cell {
     transition: background-color 0.2s ease;
 }
