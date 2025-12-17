@@ -1,6 +1,10 @@
 :root {
-    --keyboard-height: 120px;
+    --keyboard-height: 140px;
     --clue-height: 70px; /* FIXME: currently not hardcoded in clue */
+}
+
+a {
+  text-decoration: none;
 }
 
 body {
@@ -9,6 +13,7 @@ body {
     padding: 0;
     background-color: #f4f4f4;
     color: #333;
+    overflow-x: hidden;
 }
 
 #puzzle-foot {
@@ -87,6 +92,7 @@ body {
     flex-grow: 1;
     justify-content: center;
     column-gap: 28px;
+    z-index: 1;
 }
 
 button {
@@ -103,6 +109,31 @@ button {
     font-size: 16px;
     padding: 10px;
     line-height: 1px;
+
+    display: flex;
+    height: 24px;
+}
+
+.puzzleDetails {
+    display: flex;
+    flex-flow: wrap;
+    font-size: 12px;
+    justify-content: flex-start;
+
+    position: absolute;
+    width: 100%;
+}
+
+#puzzleAuthor {
+    display: block;
+    margin-top: 10px;
+    position: absolute;
+}
+
+#puzzleDate {
+    display: block;
+    margin-top: 20px;
+    position: absolute;
 }
 
 /*
@@ -203,7 +234,7 @@ button {
     font-size: 10px;
     pointer-events: none;
     color: #666;
-    /*z-index: 1;*/
+    z-index: 3;
     margin-top: -1px;
 }
 
@@ -300,7 +331,7 @@ button {
 
 #current-clue-explanation {
     white-space: pre-line;
-    margin-top: 20px;
+    margin-top: 0px;
     padding: 10px;
     font-family: Fredoka;
     font-size: 16px;
@@ -309,6 +340,7 @@ button {
     border: 3px solid #FF0;
 
     display: none;
+    margin-bottom: 16px;
 }
 
 #current-clue-explanation.show {
@@ -521,4 +553,97 @@ button {
 @font-face {
  font-family: 'Fredoka';
  src: url(Fredoka-VariableFont_wdth,wght.ttf) format('ttf');
+}
+
+
+#calendarView {
+    width: 38px;
+    margin-top: -4px;
+    position: absolute;
+    right: 10px;
+}
+
+.calendar-grid-date {
+    background-color: #FFF;
+    width: 100%;
+    flex: 1;
+    aspect-ratio: 1;
+    text-align: center;
+    border-radius: 6px;
+    background-image: linear-gradient(180deg, #FFF3, #FFF0);
+    border: 1px solid #E0E0E0;
+    box-shadow: #FFF2 0 1px 0 inset, #4480 0 1px 1px;
+    box-sizing: border-box;
+    color: #FFF;
+    font-family: Fredoka;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+
+
+    height: 32px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.date-header {
+    display: flex;
+    flex-grow: 4;
+    background: #F00;
+    width: 100%;
+    height: 30%;
+    align-items: center;
+    justify-content: center;
+}
+
+.date-header-left {
+    flex-grow: 1;
+    color: transparent;
+    text-shadow: 0 0 0 #FFF;
+    font-size: 5px;
+    margin-top: -5px;
+    transform: rotate(180deg);
+}
+
+.date-header-month {
+    flex-grow: 2;
+    font-size: 8px
+}
+
+.date-header-right {
+    flex-grow: 1;
+    color: transparent;
+    text-shadow: 0 0 0 #FFF;
+    font-size: 5px;
+    margin-top: -5px;
+    transform: rotate(180deg);
+}
+
+.date-day {
+    height: 100%;
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    color: #000;
+
+    /* FIXME: TEMP FOR DISPLAY */
+    font-size: 12px;
+}
+
+/* FIXME: consider if we even want these anymore */
+#aiToggle {
+    display: none;
+}
+
+#revealCells {
+    display: none;
+}
+
+#nextPuzzle {
+    display: none;
+}
+
+#prevPuzzle {
+    display: none;
 }

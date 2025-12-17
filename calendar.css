@@ -53,14 +53,14 @@ body {
 }
 
 .calendar-grid-date {
-    background-color: blue;
+    background-color: #FFF;
     width: 100%;
     flex: 1;
     aspect-ratio: 1;
     text-align: center;
     border-radius: 6px;
     background-image: linear-gradient(180deg, #FFF3, #FFF0);
-    border: 1px solid #55F;
+    border: 1px solid #E0E0E0;
     box-shadow: #FFF2 0 1px 0 inset, #4480 0 1px 1px;
     box-sizing: border-box;
     color: #FFF;
@@ -73,13 +73,19 @@ body {
 }
 
 .cell-completed {
-    background-color: green;
+    background-color: #e5e5f7;
+    opacity: 0.8;
+    background: repeating-linear-gradient( -45deg, #444cf7, #444cf7 5px, #e5e5f7 5px, #e5e5f7 25px );
 }
 
 .cell-noparse {
     opacity: 0.8;
     background-color: #202;
     color: #444;
+    opacity: 0.8;
+    background-image: repeating-linear-gradient(45deg, #404 25%, transparent 25%, transparent 75%, #505 75%, #606), repeating-linear-gradient(45deg, #101 25%, #202 25%, #303 75%, #404 75%, #505);
+    background-position: 0 0, 10px 10px;
+    background-size: 20px 20px;
 }
 
 .cell-nosource {
@@ -105,4 +111,63 @@ body {
     box-shadow: none;
     opacity: 0.25;
     font-weight: 200;
+}
+
+
+.calendar-grid-date {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    /* FIXME: TEMP FOR DISPLAY */
+    /*width: 128px;*/
+    font-size: 18px;
+}
+
+.date-header {
+    display: flex;
+    flex-grow: 4;
+    background: #F00;
+    width: 100%;
+    height: 30%;
+    align-items: center;
+    justify-content: center;
+
+    display: none;
+}
+
+.date-header-left {
+    flex-grow: 1;
+    color: transparent;
+    text-shadow: 0 0 0 #FFF;
+    margin-top: -20px;
+    transform: rotate(180deg);
+}
+
+.date-header-month {
+    flex-grow: 2;
+}
+
+.date-header-right {
+    flex-grow: 1;
+    color: transparent;
+    text-shadow: 0 0 0 #FFF;
+    margin-top: -20px;
+    transform: rotate(180deg);
+}
+
+.date-day {
+    height: 100%;
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    color: #000;
+}
+
+.cell-noparse .date-day {
+    opacity: 0.8;
+}
+
+.cell-completed .date-day {
+    opacity: 0.4;
 }

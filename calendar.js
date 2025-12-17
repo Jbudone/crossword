@@ -79,6 +79,11 @@ class CalendarDate {
         return MONTHS_OF_YEAR[this.month];
     };
 
+    getMonthFullName() {
+        const MONTHS_OF_YEAR = [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+        return MONTHS_OF_YEAR[this.month];
+    };
+
     addMonth() {
         this.setDate(this.year, this.month + 1);
     };
@@ -111,29 +116,76 @@ class CalendarGrid {
         this.gridEls = [];
     };
 
+    createDateEl(props) {
+
+        const gridCellEl = document.createElement('div');
+        let classes = 'calendar-grid-date';
+        for (let i = 0; props.classes && i < props.classes.length; ++i) {
+            classes += ` ${props.classes[i]}`;
+        }
+        gridCellEl.className = classes;
+
+        if (props.attribs) {
+            Object.keys(props.attribs).forEach((attrib) => {
+                gridCellEl.setAttribute(attrib, props.attribs[attrib]);
+            });
+        }
+
+
+        // Header
+        const headerEl = document.createElement('div'),
+            monthLeftEl = document.createElement('div'),
+            monthEl = document.createElement('div'),
+            monthRightEl = document.createElement('div');
+
+        headerEl.className = 'date-header';
+        monthLeftEl.className = 'date-header-left';
+        monthEl.className = 'date-header-month';
+        monthRightEl.className = 'date-header-right';
+
+        let curMonth = this.calDate.getMonthFullName();
+        monthEl.innerText = curMonth;
+
+        monthLeftEl.innerText = '📍';
+        monthRightEl.innerText = '📍';
+
+        headerEl.appendChild(monthLeftEl);
+        headerEl.appendChild(monthEl);
+        headerEl.appendChild(monthRightEl);
+        gridCellEl.appendChild(headerEl);
+
+        const dateEl = document.createElement('div');
+        dateEl.className = 'date-day';
+
+        dateEl.innerText = props.text;
+
+        gridCellEl.appendChild(dateEl);
+        
+
+        this.gridEl.appendChild(gridCellEl);
+        this.gridEls.push(gridCellEl);
+        return gridCellEl;
+    };
+
     buildGrid() {
         let firstDayOfWeek = this.calDate.getDayOfWeek(1);
         for (let i = 0; i < firstDayOfWeek; ++i) {
             const DAYS_OF_WEEK = [ "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" ];
 
-            const gridCellEl = document.createElement('div');
-            gridCellEl.className = 'calendar-grid-date cell-noday';
-            gridCellEl.textContent = "-";
-            gridCellEl.setAttribute('cal-day-type', 0);
-            this.gridEl.appendChild(gridCellEl);
-            this.gridEls.push(gridCellEl);
+            const gridCellEl = this.createDateEl({
+                attribs: { 'cal-day-type': 0 },
+                classes: ['cell-noday'],
+                text: '-'
+            });
         }
 
         for (let i = 1; i <= this.calDate.daysInMonth; ++i) {
             let dayOfWeek = this.calDate.getDayOfWeekName(i);
 
-            const gridCellEl = document.createElement('div');
-            gridCellEl.className = 'calendar-grid-date';
-            gridCellEl.textContent = i;
-            gridCellEl.setAttribute('cal-day-type', 1);
-            gridCellEl.setAttribute('cal-day-date', i);
-            this.gridEl.appendChild(gridCellEl);
-            this.gridEls.push(gridCellEl);
+            const gridCellEl = this.createDateEl({
+                attribs: { 'cal-day-type': 1, 'cal-day-date': i },
+                text: i
+            });
         }
     };
 };
@@ -186,11 +238,12 @@ class CalendarObj {
         for (let i = 0; i < puzzles.length; ++i) {
             const puzzle = puzzles[i];
             const date = new Date(puzzle.date);
+            const completedDate = (new Date(puzzle.completed)).getDate(); // NaN if "00:00:00"
             const cell = document.querySelector(`[cal-day-date="${date.getDate()}"]`);
 
             cell.classList.remove('cell-noentry');
             let entry = true;
-            if (puzzle.completed == 1) {
+            if (completedDate > 0 && puzzle.completed != "0") {
                 cell.classList.add('cell-completed');
             }
 

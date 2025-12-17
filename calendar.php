@@ -29,7 +29,7 @@ include('controller.php');
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 
     <title>Crossword</title>
-    <link rel="stylesheet" href="calendar.css">
+    <link rel="stylesheet" href="calendar.css?nocache=<?php echo time(); ?>">
 </head>
 <body>
     <div id="calendar">

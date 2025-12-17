@@ -57,8 +57,6 @@ function parsePuzzle(json) {
         }
     }
 
-    const gridNumbers = Array(height).fill(0).map(() => Array(width).fill(0));
-    let wordCount = 0;
     let wordStarts = {};
     const cluesFlat = { across: {}, down: {} };
     for (let i = 0; i < json.body[0].clues.length; ++i) {
@@ -97,16 +95,6 @@ function parsePuzzle(json) {
             cells: clue.cells,
             solution: clueSolution
         };
-
-        const cell = clue.cells[0];
-        if (!(cell in wordStarts)) {
-            ++wordCount;
-            wordStarts[cell] = wordCount;
-
-            const x = cell % width;
-            const y = parseInt(cell / width, 10);
-            gridNumbers[y][x] = wordCount;
-        }
     }
 
 
@@ -121,7 +109,6 @@ function parsePuzzle(json) {
         id: puzzleId,
         solution: solution,
         state: state,
-        gridNumbers: gridNumbers,
         cluesGrid: cluesGrid,
         cluesFlat: cluesFlat,
     };

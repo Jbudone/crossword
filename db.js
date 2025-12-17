@@ -170,13 +170,25 @@ async function CacheQuery(name, userId, value) {
 
 async function GetCachedQuery(name, userId) {
     if (name == CACHE_PUZZLESQUERY_NAME) {
-        const res = await dbQuery('SELECT `value` FROM `bigquery_mv` WHERE name = ? AND userId = ? LIMIT 1', [name, userId]);
+
+        // Fetch from bigquery
+        const res = await dbQuery('SELECT * FROM `bigquery_mv` WHERE name = ? AND userId = ? LIMIT 1', [name, userId]);
         if (!res || res.length == 0) return false;
 
         const cache = res[0].value;
         const decompressedVal = LZString.decompressFromBase64(cache);
         const value = JSON.parse(decompressedVal);
         if (!value || value.length == 0) return false;
+
+        // Do we have new completions since then?
+        const resCurrent = await dbQuery('SELECT * FROM `userPuzzleSaves` WHERE completed != 0 AND userId = ? ORDER BY completed DESC LIMIT 1', [userId]);
+        if (resCurrent && resCurrent.length == 1) {
+            const currentTime = resCurrent[0].completed;
+            const cachedTime = res[0].updated_at;
+            if (currentTime > cachedTime) {
+                return false;
+            }
+        }
 
         return value;
     }

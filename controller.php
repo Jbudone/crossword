@@ -83,8 +83,9 @@ function getAllPuzzles($userId) {
 
 function saveUserState($userId, $puzzleId, $state, $completed) {
     $connection = openConnection();
-    $statement = $connection->prepare('INSERT INTO `userPuzzleSaves` (userId, puzzleId, saveData, completed) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE `saveData` = VALUES(saveData), `completed` = VALUES(completed)');
-    $statement->bind_param("iisi", $userId, $puzzleId, $state, $completed);
+    $completedVal = $completed ? "NOW()" : '0'; // NOTE: cannot bind this as string, it needs to be raw
+    $statement = $connection->prepare('INSERT INTO `userPuzzleSaves` (userId, puzzleId, saveData) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `saveData` = VALUES(saveData), `completed` = ' . $completedVal);
+    $statement->bind_param("iis", $userId, $puzzleId, $state);
     $statement->execute();
     $statement->close();
     $connection->close();

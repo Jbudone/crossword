@@ -50,8 +50,6 @@ class CrosswordGame {
 
     async initPubSub() {
 
-        // FIXME: presence - recognize disconnect to remove "friend-current-word"
-        // FIXME: consider inactive and active pubsub based off presence -- no one else connected? then don't send input changes. Someone connected? Start sending input + selection changes, plus the initial state (current selected word)
 
         // FIXME: crossword DB userID with deviceID
         const clientIdN = parseInt(Math.random() * 1000000),
@@ -225,6 +223,7 @@ class CrosswordGame {
                 // FIXME: I ALWAYS use cloud storage right now (stomped over in server). Because there's time mismatch between server and client; need to sync somehow --
                 //if (!savedGameState || !savedGameState.timestamp || (new Date(savedGameState.timestamp)) < (new Date(cloudSaveData.timestamp))) {
                     savedGameState = cloudSaveData;
+
                 //}
             }
             
@@ -324,7 +323,7 @@ class CrosswordGame {
         sessionStateStr = JSON.stringify(sessionState);
         localStorage.setItem('session', sessionStateStr);
 
-        const SAVE_QUEUE_TIME = 8000;
+        const SAVE_QUEUE_TIME = 500;
         if (!this.queuedSaveGameState) {
             this.queuedSaveGameState = setTimeout(this.saveGameStateToServer.bind(this), SAVE_QUEUE_TIME);
         }
@@ -355,11 +354,25 @@ class CrosswordGame {
     async loadGameState() {
 
         let gameState = this.userSavedState;
-        if (gameState.isComplete) {
-            //    // set complete board
-            this.restoreCompleteBoard();
-        } else if (gameState.cells) {
-            // restore partial board
+
+        if (gameState.cells) {
+            // Board complete?
+            let flatIdx = 0;
+            let assumedComplete = true;
+            for (let row = 0; row < this.puzzleData.height && assumedComplete; row++) {
+                for (let col = 0; col < this.puzzleData.width && assumedComplete; col++) {
+                    let cell = gameState.cells[flatIdx];
+                    const expectedLetter = this.puzzleData.solution[row][col];
+
+                    if (cell != '.' && cell != '-' && expectedLetter != '.' && cell != expectedLetter) {
+                        assumedComplete = false;
+                    }
+
+                    ++flatIdx;
+                }
+            }
+
+            gameState.isComplete = assumedComplete;
             this.restoreCellValues(gameState.cells);
         }
 
@@ -411,21 +424,6 @@ class CrosswordGame {
         }
     }
 
-    restoreCompleteBoard() {
-
-        for (let row = 0; row < this.puzzleData.height; row++) {
-            for (let col = 0; col < this.puzzleData.width; col++) {
-                const input = this.getCellInput(row, col);
-                const expectedLetter = this.puzzleData.solution[row][col];
-
-                input.dataset.value = expectedLetter;
-                this.userState[row][col] = expectedLetter;
-                input.innerText = expectedLetter;
-            }
-        }
-    }
-
-
     showRestoredMessage() {
         const message = document.createElement('div');
         message.className = 'restore-message';
@@ -448,6 +446,46 @@ class CrosswordGame {
             message.style.opacity = '0';
             setTimeout(() => message.remove(), 500);
         }, 3000);
+    }
+
+    async showCompleted() {
+
+        //await loadAll(tsParticles);
+        //await tsParticles.load({ id: "confetti", options });
+
+
+        const duration = 60 * 60 * 1000,
+            animationEnd = Date.now() + duration,
+            defaults = { startVelocity: 30, spread: 360, ticks: 20, zIndex: 0 };
+
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        const interval = setInterval(function () {
+            const timeLeft = animationEnd - Date.now();
+
+            if (timeLeft <= 0) {
+                return clearInterval(interval);
+            }
+
+            const particleCount = 20 * (timeLeft / duration);
+
+            // since particles fall down, start a bit higher than random
+            confetti(
+                Object.assign({}, defaults, {
+                    particleCount,
+                    origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+                })
+            );
+
+            confetti(
+                Object.assign({}, defaults, {
+                    particleCount,
+                    origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+                })
+            );
+        }, 250);
     }
 
     displayPuzzlesList() {
@@ -505,6 +543,16 @@ class CrosswordGame {
 
     }
 
+    getMonthName(idx) {
+        const MONTHS_OF_YEAR = [ "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" ];
+        return MONTHS_OF_YEAR[idx];
+    };
+
+    getMonthFullName(idx) {
+        const MONTHS_OF_YEAR = [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+        return MONTHS_OF_YEAR[idx];
+    };
+
     async displayPuzzle() {
 
         this.puzzleId = this.puzzleData.id;
@@ -512,17 +560,28 @@ class CrosswordGame {
         // Display puzzle information
         document.getElementById('puzzleTitle').textContent = this.puzzleData.title;
         document.getElementById('puzzleAuthor').textContent = `By: ${this.puzzleData.author}`;
-        document.getElementById('puzzleDate').textContent = `Published: ${this.puzzleData.publicationDate}`;
+        //document.getElementById('puzzleDate').textContent = `Published: ${this.puzzleData.publicationDate}`;
+
+        // Create calendar
+        const monthIdx = (new Date(this.puzzleData.publicationDate)).getMonth();
+        const dateIdx = (new Date(this.puzzleData.publicationDate)).getDate();
+        const calendarMonthEl = document.getElementsByClassName('date-header-month')[0];
+        calendarMonthEl.textContent = this.getMonthFullName(monthIdx);
+
+        const calendarDayEl = document.getElementsByClassName('date-day')[0];
+        calendarDayEl.textContent = dateIdx + 1;
 
         // Create grid
         const gridDiv = document.getElementById('puzzleGrid');
         const table = document.createElement('table');
         table.className = 'flex-table-2';
 
+        let cellIdx = -1, cellNumberCount = 0;
         for (let row = 0; row < this.puzzleData.height; row++) {
             const tr = document.createElement('tr');
             tr.className = 'flex-row';
             for (let col = 0; col < this.puzzleData.width; col++) {
+                ++cellIdx;
                 const td = document.createElement('td');
                 td.className = 'puzzle-cell';
                 td.classList.add('flex-cell-2');
@@ -530,10 +589,25 @@ class CrosswordGame {
                 if (this.puzzleData.solution[row][col] === '.') {
                     td.classList.add('black-cell');
                 } else {
-                    if (this.puzzleData.gridNumbers[row][col] > 0) {
+
+                    // Grid Number
+                    if
+                    (
+                        (
+                            this.puzzleData.cluesFlat.across[cellNumberCount] &&
+                            cellIdx == this.puzzleData.cluesFlat.across[cellNumberCount].cells[0]
+                        )
+                        ||
+                        (
+                            this.puzzleData.cluesFlat.down[cellNumberCount] &&
+                            cellIdx == this.puzzleData.cluesFlat.down[cellNumberCount].cells[0]
+                        )
+                    )
+                    {
+                        cellNumberCount++;
                         const numberSpan = document.createElement('span');
                         numberSpan.className = 'cell-number';
-                        numberSpan.textContent = this.puzzleData.gridNumbers[row][col];
+                        numberSpan.textContent = `${cellNumberCount}`;
                         td.appendChild(numberSpan);
                     }
 
@@ -653,7 +727,7 @@ class CrosswordGame {
         //        this.updateCurrentClue(row, col);
         //    }
         //});
-        document.getElementById('current-clue-display').addEventListener('click', (e) => {
+        this.clueElements.text.addEventListener('click', (e) => {
             this.clueType++;
             if (this.clueType == 3) this.clueType = 0;
             if (this.currentCell) {
@@ -675,7 +749,11 @@ class CrosswordGame {
         // Load saved state if it exists
         if (this.userSavedState) {
             await this.loadGameState();
-            this.showRestoredMessage();
+            //this.showRestoredMessage();
+
+            if (this.userSavedState.isComplete) {
+                await this.showCompleted();
+            }
         }
     }
 
@@ -728,6 +806,27 @@ class CrosswordGame {
         this.saveGameState();
     }
 
+    onUpdatedBoard() {
+
+        // Board complete?
+        let assumedComplete = true;
+        for (let row = 0; row < this.puzzleData.height && assumedComplete; row++) {
+            for (let col = 0; col < this.puzzleData.width && assumedComplete; col++) {
+                const cell = this.userState[row][col];
+                const expectedLetter = this.puzzleData.solution[row][col];
+
+                if (cell != '.' && cell != '-' && expectedLetter != '.' && cell != expectedLetter) {
+                    assumedComplete = false;
+                }
+            }
+        }
+
+        this.isComplete = assumedComplete;
+        if (this.isComplete) {
+            this.showCompleted();
+        }
+    }
+
     setCell(cell, char, revealed) {
         const { row, col } = this.getRowCol(cell);
 
@@ -744,11 +843,12 @@ class CrosswordGame {
             this.validateCell(cell, row, col);
         }
 
+        this.onUpdatedBoard();
     }
 
     handleCellInput(cell, char) {
         console.log(cell);
-        const { row, col } = this.getRowCol(cell);
+        let { row, col } = this.getRowCol(cell);
         console.log(row);
         console.log(col);
 

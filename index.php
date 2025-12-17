@@ -52,20 +52,44 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js" integrity="sha512-qtX0GLM3qX8rxJN1gyDfcnMFFrKvixfoEOwbBib9VafR5vbChV5LeE5wSI/x+IlCkTY5ZFddFDCCfaVJJNnuKQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tsparticles/confetti@3.0.3/tsparticles.confetti.bundle.min.js"></script>
+
+<!--
+    <script type="module">
+        // Importing tsParticles and loadAll from CDN
+        import { tsParticles } from "https://cdn.jsdelivr.net/npm/@tsparticles/engine@3.0.3/+esm";
+        import { loadAll } from "https://cdn.jsdelivr.net/npm/@tsparticles/all@3.0.3/+esm";
+
+        window['loadAll'] = loadAll;
+        window['tsParticles'] = tsParticles;
+    </script>
+-->
 </head>
 <body>
     <input type="password" id="hiddenInput" maxlength="1" style="opacity: 0; position: fixed; bottom: 0px; left: 0px;" />
     
     <div id="puzzleInfo">
-        <h2 id="puzzleTitle"></h2>
-        <p id="puzzleAuthor"></p>
-        <p id="puzzleDate"></p>
+        <div class="puzzleDetails">
+            <h2 id="puzzleTitle"></h2>
+            <p id="puzzleAuthor"></p>
+            <p id="puzzleDate"></p>
+        </div>
 
         <div class="buttons">
             <button id="prevPuzzle" class="button"> ◀ </button>
-            <button id="aiToggle" class="button"> 🤖 </button>
-            <button id="calendarView" class="button"> 📅 </button>
-            <button id="revealCells" class="button">Random Reveal</button>
+            <button id="aiToggle" class="button">  </button>
+            <a href='#' id='calendarView' class="button">
+                <div class="calendar-grid-date">
+                    <div class="date-header">
+                        <div class="date-header-left">📍</div>
+                        <div class="date-header-month"></div>
+                        <div class="date-header-right">📍</div>
+                    </div>
+                    <div class="date-day"></div>
+                </div>
+            </a>
+            <button id="revealCells" class="button"> R </button>
             <button id="nextPuzzle" class="button"> ▶ </button>
         </div>
 
@@ -92,9 +116,9 @@
 
     <div id="puzzle-foot" class="keyboard-active">
         <div id="current-clue-display" class="ai-mode">
-            <div id="clue-left">👈</div>
+            <div id="clue-left"><a href='#'>👈</a></div>
             <div id="clue-text"></div>
-            <div id="clue-right">👉</div>
+            <div id="clue-right"><a href='#'>👉</a></div>
         </div>
         <div id="keyboard">
             <div class="keyboard-row">
@@ -134,10 +158,14 @@
         </div>
     </div>
 
+    <div id="confetti" style="z-index: 5; position: absolute;"></div>
+
     <script src="crossword.js?nocache=<?php echo time(); ?>"></script>
     <script src="main.js"></script>
 
+<!--
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
+-->
 </body>
 </html>
