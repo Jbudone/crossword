@@ -87,6 +87,49 @@
                         <div class="date-header-right">📍</div>
                     </div>
                     <div class="date-day"></div>
+                    <div class="date-cells">
+                        <div class="date-cells-week">
+                            <div class="date-cells-day"></div>
+                            <div class="date-cells-day"></div>
+                            <div class="date-cells-day"></div>
+                            <div class="date-cells-day">1</div>
+                            <div class="date-cells-day">2</div>
+                            <div class="date-cells-day">3</div>
+                            <div class="date-cells-day">4</div>
+
+                            <div class="date-cells-day">5</div>
+                            <div class="date-cells-day">6</div>
+                            <div class="date-cells-day">7</div>
+                            <div class="date-cells-day">8</div>
+                            <div class="date-cells-day">9</div>
+                            <div class="date-cells-day">10</div>
+                            <div class="date-cells-day">11</div>
+
+                            <div class="date-cells-day">12</div>
+                            <div class="date-cells-day">13</div>
+                            <div class="date-cells-day">14</div>
+                            <div class="date-cells-day">15</div>
+                            <div class="date-cells-day">16</div>
+                            <div class="date-cells-day">17</div>
+                            <div class="date-cells-day">18</div>
+
+                            <div class="date-cells-day">19</div>
+                            <div class="date-cells-day">20</div>
+                            <div class="date-cells-day">21</div>
+                            <div class="date-cells-day">22</div>
+                            <div class="date-cells-day">23</div>
+                            <div class="date-cells-day">24</div>
+                            <div class="date-cells-day">25</div>
+
+                            <div class="date-cells-day">26</div>
+                            <div class="date-cells-day">27</div>
+                            <div class="date-cells-day">28</div>
+                            <div class="date-cells-day">29</div>
+                            <div class="date-cells-day"></div>
+                            <div class="date-cells-day"></div>
+                            <div class="date-cells-day"></div>
+                        </div>
+                    </div>
                 </div>
             </a>
             <button id="revealCells" class="button"> R </button>

@@ -218,16 +218,44 @@ class CrosswordGame {
 
             // load saveData
             const cloudSaveData = json.saveData && JSON.parse(json.saveData);
-            if (cloudSaveData) {
-                // NOTE: only load if newer than local saveData
-                // FIXME: I ALWAYS use cloud storage right now (stomped over in server). Because there's time mismatch between server and client; need to sync somehow --
-                //if (!savedGameState || !savedGameState.timestamp || (new Date(savedGameState.timestamp)) < (new Date(cloudSaveData.timestamp))) {
-                    savedGameState = cloudSaveData;
+            let loadingGameState = null;
+            if (!savedGameState) {
+                loadingGameState = cloudSaveData;
+            } else if (!cloudSaveData) {
+                loadingGameState = savedGameState;
+            } else if (savedGameState.state != cloudSaveData.state) {
+                // state mismatch, prefer   solved > partial > blank
+                loadingGameState = (savedGameState.state > cloudSaveData) ? savedGameState : cloudSaveData;
+            } else {
+                // Merge cloud + localStorage, in case there was a mismatch (eg. playing offline)
+                // Zip the two arrays, and prefer: solved > revealed > wrong > blank
+                if (savedGameState.cells.length != cloudSaveData.cells.length) {
+                    loadingGameState = cloudSaveData;
+                } else {
+                    loadingGameState = savedGameState;
+                    let mergedCells = "";
+                    for (let i = 0; i < savedGameState.cells.length; ++i) {
+                        const savedCell = savedGameState.cells[i],
+                            cloudCell = cloudSaveData.cells[i];
+                        let savedCellValue = 0,
+                            cloudCellValue = 0;
 
-                //}
+                        if (savedCell == ' ') savedCellValue = 0;
+                        else if (savedCell == '-') savedCellValue = 2;
+                        else if (savedCell == '.') savedCellValue = 3;
+
+                        if (cloudCell == ' ') cloudCellValue = 0;
+                        else if (cloudCell == '-') cloudCellValue = 2;
+                        else if (cloudCell == '.') cloudCellValue = 3;
+
+                        const usedCell = (savedCellValue >= cloudCellValue) ? savedCell : cloudCell;
+                        mergedCells += usedCell;
+                    }
+                    loadingGameState.cells = mergedCells;
+                }
             }
             
-            this.userSavedState = savedGameState;
+            this.userSavedState = loadingGameState;
             this.loadedPuzzleNYT();
         });
     }
@@ -422,30 +450,6 @@ class CrosswordGame {
                 ++flatIdx;
             }
         }
-    }
-
-    showRestoredMessage() {
-        const message = document.createElement('div');
-        message.className = 'restore-message';
-        message.textContent = 'Puzzle progress restored from previous session';
-        message.style.cssText = `
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            opacity: 1;
-            transition: opacity 0.5s ease-in-out;
-        `;
-        
-        const puzzleInfo = document.getElementById('puzzleInfo');
-        puzzleInfo.insertBefore(message, puzzleInfo.firstChild);
-        
-        // Fade out message after 3 seconds
-        setTimeout(() => {
-            message.style.opacity = '0';
-            setTimeout(() => message.remove(), 500);
-        }, 3000);
     }
 
     async showCompleted() {
@@ -749,7 +753,6 @@ class CrosswordGame {
         // Load saved state if it exists
         if (this.userSavedState) {
             await this.loadGameState();
-            //this.showRestoredMessage();
 
             if (this.userSavedState.isComplete) {
                 await this.showCompleted();

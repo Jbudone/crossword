@@ -571,7 +571,7 @@ button {
     text-align: center;
     border-radius: 6px;
     background-image: linear-gradient(180deg, #FFF3, #FFF0);
-    border: 1px solid #E0E0E0;
+    border: 1px solid #000;
     box-shadow: #FFF2 0 1px 0 inset, #4480 0 1px 1px;
     box-sizing: border-box;
     color: #FFF;
@@ -589,12 +589,13 @@ button {
 
 .date-header {
     display: flex;
-    flex-grow: 4;
     background: #F00;
     width: 100%;
-    height: 30%;
+    height: 9px;
     align-items: center;
     justify-content: center;
+    margin-top: -1px;
+    border-radius: 6px 6px 0px 0px;
 }
 
 .date-header-left {
@@ -608,7 +609,8 @@ button {
 
 .date-header-month {
     flex-grow: 2;
-    font-size: 8px
+    font-size: 9px;
+    margin-bottom: 1px;
 }
 
 .date-header-right {
@@ -626,9 +628,32 @@ button {
     display: flex;
     justify-content: center;
     color: #000;
+    z-index: 1;
 
     /* FIXME: TEMP FOR DISPLAY */
-    font-size: 12px;
+    font-size: 16px;
+    position: absolute;
+    margin-top: 3px;
+}
+
+
+.date-cells {
+    margin-top: 13px;
+    position: absolute;
+}
+
+.date-cells-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    font-size: 4px;
+    color: #DDD;
+    gap: 4px 0px;
+    line-height: 0px;
+    margin-top: -1px;
+}
+
+.date-cells-day {
+
 }
 
 /* FIXME: consider if we even want these anymore */
