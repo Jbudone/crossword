@@ -1162,33 +1162,46 @@ class CrosswordGame {
         }
     }
 
+    isClueSolved(clue) {
+        const cells = clue.cells;
+        for (let i = 0; i < cells.length; ++i) {
+            const row = parseInt(cells[i] / this.puzzleData.width, 10),
+                col = cells[i] % this.puzzleData.width,
+                userCell = this.userState[row][col],
+                solvedCell = this.puzzleData.solution[row][col];
+            if (userCell == solvedCell) return true;
+        }
+
+        return false;
+    }
+
     loadAdjacentClue(step) {
         if (this.currentCell) {
             const { row, col } = this.getRowCol(this.currentCell);
 
-            const clueList = this.direction === 'across' ? this.puzzleData.cluesFlat.across : this.puzzleData.cluesFlat.down;
-            const clueMapping = this.puzzleData.cluesGrid[row][col];
-            let clueListKey = this.direction === 'across' ? clueMapping[0] : clueMapping[1];
-            let clueListIdx = Object.keys(clueList).indexOf(`${clueListKey}`);
-
-            if (step > 0) {
-                if (clueListIdx === clueList.length - 1) {
-                    clueListIdx = 0;
-                } else {
-                    clueListIdx++;
-                }
-            } else {
-                if (clueListIdx === 0) {
-                    clueListIdx = clueList.length - 1;
-                } else {
-                    clueListIdx--;
+            const across = this.puzzleData.cluesFlat.across,
+                down = this.puzzleData.cluesFlat.down,
+                clueMapping = this.puzzleData.cluesGrid[row][col];
+            let curClueIdx = Math.max(clueMapping[0], clueMapping[1]);
+            const numClues = Object.keys(across).length + Object.keys(down).length;
+            for (let i = 0; i < numClues; ++i) {
+                curClueIdx += step;
+                if (curClueIdx >= numClues) curClueIdx = 0;
+                if (curClueIdx < 0) curClueIdx = numClues - 1;
+                if (across[curClueIdx]) {
+                    const clue = across[curClueIdx];
+                    if (this.isClueSolved(clue)) continue;
+                    const div = document.getElementById(`clue-across-${curClueIdx}`);
+                    this.handleClueClick('across', clue.cells[0], div);
+                    break;
+                } else if (down[curClueIdx]) {
+                    const clue = down[curClueIdx];
+                    if (this.isClueSolved(clue)) continue;
+                    const div = document.getElementById(`clue-down-${curClueIdx}`);
+                    this.handleClueClick('down', clue.cells[0], div);
+                    break;
                 }
             }
-
-            clueListKey = Object.keys(clueList)[clueListIdx];
-            const clue = clueList[clueListKey];
-            const div = document.getElementById(`clue-${this.direction}-${clueListKey}`);
-            this.handleClueClick(this.direction, clue.cells[0], div)
         }
     }
 
