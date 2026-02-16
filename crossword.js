@@ -1182,24 +1182,44 @@ class CrosswordGame {
             const across = this.puzzleData.cluesFlat.across,
                 down = this.puzzleData.cluesFlat.down,
                 clueMapping = this.puzzleData.cluesGrid[row][col];
-            let curClueIdx = Math.max(clueMapping[0], clueMapping[1]);
-            const numClues = Object.keys(across).length + Object.keys(down).length;
-            for (let i = 0; i < numClues; ++i) {
-                curClueIdx += step;
-                if (curClueIdx >= numClues) curClueIdx = 0;
-                if (curClueIdx < 0) curClueIdx = numClues - 1;
-                if (across[curClueIdx]) {
-                    const clue = across[curClueIdx];
+            //let curClueIdx = Math.max(clueMapping[0], clueMapping[1]);
+            //const numClues = Object.keys(across).length + Object.keys(down).length;
+
+            let listsByDirection = [];
+            let curClueKey = 0;
+            if (this.direction == 'across') {
+                listsByDirection = [{ direction: 'across', list: across }, { direction: 'down', list: down }];
+                curClueKey = clueMapping[0];
+            } else {
+                listsByDirection = [{ direction: 'down', list: down }, { direction: 'across', list: across }];
+                curClueKey = clueMapping[1];
+            }
+
+            for (let dK in listsByDirection) {
+                const clues = listsByDirection[dK],
+                    direction = clues.direction,
+                    list = clues.list;
+
+                const listByKeys = Object.keys(list).map((n) => parseInt(n));
+                let curClueIdx = listByKeys.length - 1; // assume last
+                for (let i = 0; i < listByKeys.length - 1; ++i) {
+                    if (listByKeys[i] >= curClueKey && listByKeys[i+1] > curClueKey) {
+                        curClueIdx = i;
+                        break;
+                    }
+                }
+
+                const lastKey = listByKeys[listByKeys.length - 1];
+                for (let i = 0; i < listByKeys.length; ++i) {
+                    curClueIdx += step;
+                    if (curClueIdx >= listByKeys.length) curClueIdx = 0;
+                    if (curClueIdx < 0) curClueIdx = listByKeys.length - 1;
+                    let curClueKey = listByKeys[curClueIdx];
+                    const clue = list[curClueKey];
                     if (this.isClueSolved(clue)) continue;
-                    const div = document.getElementById(`clue-across-${curClueIdx}`);
-                    this.handleClueClick('across', clue.cells[0], div);
-                    break;
-                } else if (down[curClueIdx]) {
-                    const clue = down[curClueIdx];
-                    if (this.isClueSolved(clue)) continue;
-                    const div = document.getElementById(`clue-down-${curClueIdx}`);
-                    this.handleClueClick('down', clue.cells[0], div);
-                    break;
+                    const div = document.getElementById(`clue-${direction}-${curClueKey}`);
+                    this.handleClueClick(direction, clue.cells[0], div);
+                    return;
                 }
             }
         }
