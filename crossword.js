@@ -581,6 +581,7 @@ class CrosswordGame {
         table.className = 'flex-table-2';
 
         let cellIdx = -1, cellNumberCount = 0;
+        let curAcrossClueIdx = -1, curDownClueIdx = -1;
         for (let row = 0; row < this.puzzleData.height; row++) {
             const tr = document.createElement('tr');
             tr.className = 'flex-row';
@@ -595,18 +596,29 @@ class CrosswordGame {
                 } else {
 
                     // Grid Number
+                    let newClueNumber = false;
+
                     if
                     (
-                        (
-                            this.puzzleData.cluesFlat.across[cellNumberCount] &&
-                            cellIdx == this.puzzleData.cluesFlat.across[cellNumberCount].cells[0]
-                        )
-                        ||
-                        (
-                            this.puzzleData.cluesFlat.down[cellNumberCount] &&
-                            cellIdx == this.puzzleData.cluesFlat.down[cellNumberCount].cells[0]
-                        )
+                        this.puzzleData.cluesFlat.across[cellNumberCount] &&
+                        cellIdx == this.puzzleData.cluesFlat.across[cellNumberCount].cells[0]
                     )
+                    {
+                        curAcrossClueIdx = cellNumberCount;
+                        newClueNumber = true;
+                    }
+
+                    if
+                    (
+                        this.puzzleData.cluesFlat.down[cellNumberCount] &&
+                        cellIdx == this.puzzleData.cluesFlat.down[cellNumberCount].cells[0]
+                    )
+                    {
+                        curDownClueIdx = cellNumberCount;
+                        newClueNumber = true;
+                    }
+
+                    if (newClueNumber)
                     {
                         cellNumberCount++;
                         const numberSpan = document.createElement('span');
@@ -620,6 +632,8 @@ class CrosswordGame {
                     input.maxLength = 1;
                     input.dataset.row = row;
                     input.dataset.col = col;
+                    input.dataset.acrossClueIdx = curAcrossClueIdx;
+                    input.dataset.downClueIdx = curDownClueIdx;
                     input.dataset.value = '';
                     //input.addEventListener('focus', (e) => this.handleCellFocus(e.target, e));
                     //input.addEventListener('focus', (e) => {
@@ -1169,10 +1183,10 @@ class CrosswordGame {
                 col = cells[i] % this.puzzleData.width,
                 userCell = this.userState[row][col],
                 solvedCell = this.puzzleData.solution[row][col];
-            if (userCell == solvedCell) return true;
+            if (userCell != solvedCell) return false;
         }
 
-        return false;
+        return true;
     }
 
     loadAdjacentClue(step) {
