@@ -34,18 +34,38 @@ include('controller.php');
 <body>
     <div id="calendar">
         <div id="calendar-header">
-            <div id="calendar-header-left" class="calendar-header-child"> ◀ </div>
-            <div id="calendar-header-current" class="calendar-header-child"> </div>
-            <div id="calendar-header-right" class="calendar-header-child"> ▶ </div>
+            <div id="calendar-header-current"></div>
+            <div id="calendar-header-nav">
+                <button id="calendar-header-left" class="calendar-nav-btn" aria-label="Previous month">&#10094;</button>
+                <button id="calendar-header-right" class="calendar-nav-btn calendar-nav-btn-next" aria-label="Next month">&#10095;</button>
+            </div>
         </div>
-        <div id="calendar-grid">
-            <div class="calendar-dayofweek">SUN</div>
-            <div class="calendar-dayofweek">MON</div>
-            <div class="calendar-dayofweek">TUE</div>
-            <div class="calendar-dayofweek">WED</div>
-            <div class="calendar-dayofweek">THU</div>
-            <div class="calendar-dayofweek">FRI</div>
-            <div class="calendar-dayofweek">SAT</div>
+
+        <a href="#" id="calendar-resume" class="calendar-resume" style="display: none;">
+            <div class="resume-play-icon">&#9654;</div>
+            <div class="resume-text">
+                <div class="resume-label">Continue today's puzzle</div>
+                <div class="resume-title">NYT Crossword</div>
+            </div>
+            <div class="resume-button">Resume</div>
+        </a>
+
+        <div id="calendar-dow">
+            <div class="calendar-dayofweek">S</div>
+            <div class="calendar-dayofweek">M</div>
+            <div class="calendar-dayofweek">T</div>
+            <div class="calendar-dayofweek">W</div>
+            <div class="calendar-dayofweek">T</div>
+            <div class="calendar-dayofweek">F</div>
+            <div class="calendar-dayofweek">S</div>
+        </div>
+
+        <div id="calendar-grid"></div>
+
+        <div id="calendar-legend">
+            <div class="legend-item"><span class="legend-dot legend-done"></span>Done</div>
+            <div class="legend-item"><span class="legend-dot legend-inprogress"></span>In progress</div>
+            <div class="legend-item"><span class="legend-dot legend-nopuzzle"></span>No puzzle</div>
         </div>
     </div>
 

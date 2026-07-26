@@ -131,36 +131,10 @@ class CalendarGrid {
             });
         }
 
-
-        // Header
-        const headerEl = document.createElement('div'),
-            monthLeftEl = document.createElement('div'),
-            monthEl = document.createElement('div'),
-            monthRightEl = document.createElement('div');
-
-        headerEl.className = 'date-header';
-        monthLeftEl.className = 'date-header-left';
-        monthEl.className = 'date-header-month';
-        monthRightEl.className = 'date-header-right';
-
-        let curMonth = this.calDate.getMonthFullName();
-        monthEl.innerText = curMonth;
-
-        monthLeftEl.innerText = '📍';
-        monthRightEl.innerText = '📍';
-
-        headerEl.appendChild(monthLeftEl);
-        headerEl.appendChild(monthEl);
-        headerEl.appendChild(monthRightEl);
-        gridCellEl.appendChild(headerEl);
-
         const dateEl = document.createElement('div');
         dateEl.className = 'date-day';
-
         dateEl.innerText = props.text;
-
         gridCellEl.appendChild(dateEl);
-        
 
         this.gridEl.appendChild(gridCellEl);
         this.gridEls.push(gridCellEl);
@@ -188,6 +162,12 @@ class CalendarGrid {
             });
         }
     };
+};
+
+function isPuzzleCompleted(puzzle) {
+    if (!puzzle.completed || puzzle.completed == "0") return false;
+    const completedDate = new Date(puzzle.completed);
+    return !isNaN(completedDate.getTime());
 };
 
 class CalendarObj {
@@ -224,52 +204,73 @@ class CalendarObj {
 
     linkPuzzles() {
 
+        const today = new Date();
+        const isCurrentMonth = this.calDate.year == today.getFullYear() && this.calDate.month == today.getMonth();
+
         const puzzles = allPuzzles.filter((p) => {
             const date = new Date(p.date);
             return date.getFullYear() == this.calDate.year && date.getMonth() == this.calDate.month;
         });
 
+        const puzzlesByDay = {};
+        puzzles.forEach((p) => { puzzlesByDay[(new Date(p.date)).getDate()] = p; });
+
         const allDayCells = document.querySelectorAll(`[cal-day-type="1"]`);
         for (let i = 0; i < allDayCells.length; ++i) {
             const cell = allDayCells[i];
-            cell.classList.add('cell-noentry');
-        }
+            const day = parseInt(cell.getAttribute('cal-day-date'), 10);
+            const puzzle = puzzlesByDay[day];
+            const isFuture = isCurrentMonth && day > today.getDate();
 
-        for (let i = 0; i < puzzles.length; ++i) {
-            const puzzle = puzzles[i];
-            const date = new Date(puzzle.date);
-            const completedDate = (new Date(puzzle.completed)).getDate(); // NaN if "00:00:00"
-            const cell = document.querySelector(`[cal-day-date="${date.getDate()}"]`);
-
-            cell.classList.remove('cell-noentry');
-            let entry = true;
-            if (completedDate > 0 && puzzle.completed != "0") {
-                cell.classList.add('cell-completed');
+            if (isCurrentMonth && day == today.getDate()) {
+                cell.classList.add('cell-today');
             }
 
-            if (puzzle.parsedData == 0) {
-                cell.classList.add('cell-noparse');
-                entry = false;
+            const hasValidPuzzle = puzzle && puzzle.parsedData != 0 && puzzle.sourceData != 0;
+
+            if (!hasValidPuzzle) {
+                cell.classList.add(isFuture ? 'cell-locked' : 'cell-nopuzzle');
+                continue;
             }
 
-            if (puzzle.sourceData == 0) {
-                cell.classList.add('cell-nosource');
-                entry = false;
-            }
+            cell.classList.add(isPuzzleCompleted(puzzle) ? 'cell-done' : 'cell-inprogress');
 
-            if (entry) {
-                cell.onclick = () => {
-                    window.location = `index.php?puzzleid=${puzzle.puzzleId}`;
-                };
-            }
+            cell.onclick = () => {
+                window.location = `index.php?puzzleid=${puzzle.puzzleId}`;
+            };
         }
     };
 
+    updateResumeCard() {
+        const today = new Date();
+        const resumeEl = document.getElementById('calendar-resume');
+        if (this.calDate.year != today.getFullYear() || this.calDate.month != today.getMonth()) {
+            resumeEl.style.display = 'none';
+            return;
+        }
+
+        const todaysPuzzle = allPuzzles.find((p) => {
+            const date = new Date(p.date);
+            return date.getFullYear() == today.getFullYear() && date.getMonth() == today.getMonth() && date.getDate() == today.getDate();
+        });
+
+        const hasValidPuzzle = todaysPuzzle && todaysPuzzle.parsedData != 0 && todaysPuzzle.sourceData != 0;
+
+        if (!hasValidPuzzle || isPuzzleCompleted(todaysPuzzle)) {
+            resumeEl.style.display = 'none';
+            return;
+        }
+
+        resumeEl.href = `index.php?puzzleid=${todaysPuzzle.puzzleId}`;
+        resumeEl.style.display = 'flex';
+    };
+
     updateDisplay() {
-        let curMonth = this.calDate.getMonthName();
+        let curMonth = this.calDate.getMonthFullName();
         let curYear = this.calDate.year;
         this.monthEl.innerText = `${curMonth} ${curYear}`;
         this.linkPuzzles();
+        this.updateResumeCard();
     };
 };
 
