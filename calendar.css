@@ -208,6 +208,12 @@ body {
     font-size: 8px;
 }
 
+/* Not started: playable, but no save yet */
+.cell-new .date-day {
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
 /* In progress: outlined ring */
 .cell-inprogress .date-day {
     border: 2px solid var(--accent);
@@ -279,6 +285,11 @@ body {
 .legend-inprogress {
     background: #FFF;
     border: 2px solid var(--accent);
+}
+
+.legend-new {
+    background: #FFF;
+    border: 1px solid var(--text-dark);
 }
 
 .legend-nopuzzle {

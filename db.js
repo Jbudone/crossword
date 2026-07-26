@@ -180,10 +180,10 @@ async function GetCachedQuery(name, userId) {
         const value = JSON.parse(decompressedVal);
         if (!value || value.length == 0) return false;
 
-        // Do we have new completions since then?
-        const resCurrent = await dbQuery('SELECT * FROM `userPuzzleSaves` WHERE completed != 0 AND userId = ? ORDER BY completed DESC LIMIT 1', [userId]);
+        // Do we have new saves (started, in-progress, or completed) since then?
+        const resCurrent = await dbQuery('SELECT `updated` FROM `userPuzzleSaves` WHERE userId = ? ORDER BY updated DESC LIMIT 1', [userId]);
         if (resCurrent && resCurrent.length == 1) {
-            const currentTime = resCurrent[0].completed;
+            const currentTime = resCurrent[0].updated;
             const cachedTime = res[0].updated_at;
             if (currentTime > cachedTime) {
                 return false;
@@ -195,7 +195,7 @@ async function GetCachedQuery(name, userId) {
 }
 
 const CACHE_PUZZLESQUERY_NAME = 'PuzzleList';
-const PUZZLESQUERY = 'SELECT puzzleList.*, COALESCE(userPuzzleSaves.completed, 0) AS completed, CASE WHEN puzzles.data IS NOT NULL THEN 1 ELSE 0 END AS parsedData, CASE WHEN puzzles.sourceData IS NOT NULL THEN 1 ELSE 0 END AS sourceData FROM puzzleList LEFT JOIN puzzles ON puzzleList.puzzleId=puzzles.puzzleId LEFT JOIN userPuzzleSaves ON puzzleList.puzzleId=userPuzzleSaves.puzzleId AND userPuzzleSaves.userId = ?';
+const PUZZLESQUERY = 'SELECT puzzleList.*, COALESCE(userPuzzleSaves.completed, 0) AS completed, CASE WHEN userPuzzleSaves.puzzleId IS NOT NULL THEN 1 ELSE 0 END AS started, CASE WHEN puzzles.data IS NOT NULL THEN 1 ELSE 0 END AS parsedData, CASE WHEN puzzles.sourceData IS NOT NULL THEN 1 ELSE 0 END AS sourceData FROM puzzleList LEFT JOIN puzzles ON puzzleList.puzzleId=puzzles.puzzleId LEFT JOIN userPuzzleSaves ON puzzleList.puzzleId=userPuzzleSaves.puzzleId AND userPuzzleSaves.userId = ?';
 
 async function PuzzlesList(addOrUpdateData, useCache, userId) {
     await Connect();
