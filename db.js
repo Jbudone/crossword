@@ -3,6 +3,7 @@ const util = require('util');
 const mysql = require('mysql2/promise');
 const should = require('should');
 const LZString = require('lz-string');
+const path = require('node:path');
 
 let dbPassword = child_process.execSync(path.join(__dirname, 'secrets.sh') + ' DB_PASSWORD', { encoding: 'utf8' }).trim();
 let connection = null;
