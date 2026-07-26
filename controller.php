@@ -18,7 +18,7 @@ function getUserPuzzle($puzzleid, $userId, $fetchPuzData) {
     // FIXME: want to include $userId but they may not have a save state, in which case we'd want to use null
     if ($fetchPuzData) {
         // puzData and saveState
-        $statement = $connection->prepare('SELECT `data`, userPuzzleSaves.saveData, userPuzzleSaves.completed, userPuzzleSaves.updated FROM `puzzles` LEFT JOIN `userPuzzleSaves` ON puzzles.puzzleId = userPuzzleSaves.puzzleId WHERE puzzles.puzzleId = ?');
+        $statement = $connection->prepare('SELECT COALESCE(`data`, `sourceData`) AS `data`, userPuzzleSaves.saveData, userPuzzleSaves.completed, userPuzzleSaves.updated FROM `puzzles` LEFT JOIN `userPuzzleSaves` ON puzzles.puzzleId = userPuzzleSaves.puzzleId WHERE puzzles.puzzleId = ?');
     } else {
         // saveState only
         $statement = $connection->prepare('SELECT userPuzzleSaves.saveData, userPuzzleSaves.completed, userPuzzleSaves.updated FROM `puzzles` LEFT JOIN `userPuzzleSaves` ON puzzles.puzzleId = userPuzzleSaves.puzzleId WHERE puzzles.puzzleId = ?');

@@ -65,6 +65,7 @@ include('controller.php');
         <div id="calendar-legend">
             <div class="legend-item"><span class="legend-dot legend-done"></span>Done</div>
             <div class="legend-item"><span class="legend-dot legend-inprogress"></span>In progress</div>
+            <div class="legend-item"><span class="legend-dot legend-new"></span>Not started</div>
             <div class="legend-item"><span class="legend-dot legend-nopuzzle"></span>No puzzle</div>
         </div>
     </div>

@@ -1,0 +1,10 @@
+.env
+.claude
+.playwright-cli
+.playwright
+e2e
+node_modules
+package-lock.json
+secrets.sh
+skills-lock.json
+test-results
